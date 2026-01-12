@@ -1,0 +1,61 @@
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+import { AdminHeader } from "@/components/admin/admin-header"
+import { CourseManagementClient } from "@/components/admin/course-management-client"
+
+export default async function AdminCoursesPage() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login")
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+
+  if (profile?.role !== "admin") {
+    redirect("/dashboard")
+  }
+
+  const { data: courses } = await supabase.from("courses").select("*").order("created_at", { ascending: false })
+
+  // Get enrollment stats for each course
+  const coursesWithStats = await Promise.all(
+    (courses || []).map(async (course) => {
+      const { count: enrollments } = await supabase
+        .from("progress")
+        .select("*", { count: "exact" })
+        .eq("course_id", course.id)
+
+      const { count: completions } = await supabase
+        .from("progress")
+        .select("*", { count: "exact" })
+        .eq("course_id", course.id)
+        .eq("completed", true)
+
+      return {
+        ...course,
+        enrollments: enrollments || 0,
+        completions: completions || 0,
+      }
+    }),
+  )
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <AdminHeader profile={profile} />
+      <main className="flex-1 p-6 md:p-8 space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Course Management</h1>
+            <p className="text-muted-foreground mt-2">Create, edit, and delete courses</p>
+          </div>
+          <CourseManagementClient courses={coursesWithStats} />
+        </div>
+      </main>
+    </div>
+  )
+}
