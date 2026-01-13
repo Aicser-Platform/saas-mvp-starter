@@ -30,6 +30,16 @@ export async function createCheckoutSession(tier: string) {
   // Create or get Stripe customer
   let customerId = profile.stripe_customer_id
 
+  if (customerId) {
+    try {
+      // Verify the customer exists in Stripe
+      await stripe.customers.retrieve(customerId)
+    } catch (error) {
+      console.log("[v0] Existing customer ID is invalid, creating new customer")
+      customerId = null
+    }
+  }
+
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: profile.email,
@@ -88,6 +98,12 @@ export async function createPortalSession() {
 
   if (!profile?.stripe_customer_id) {
     throw new Error("No Stripe customer found")
+  }
+
+  try {
+    await stripe.customers.retrieve(profile.stripe_customer_id)
+  } catch (error) {
+    throw new Error("Invalid Stripe customer. Please contact support or try upgrading again.")
   }
 
   const session = await stripe.billingPortal.sessions.create({

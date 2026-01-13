@@ -41,25 +41,44 @@ export default async function CoursePage({ params }: { params: { id: string } })
     redirect("/dashboard/subscription")
   }
 
-  let progress = await supabase
+  const { data: existingProgress } = await supabase
     .from("progress")
     .select("*")
     .eq("user_id", user.id)
     .eq("course_id", course.id)
     .maybeSingle()
 
+  let progress = existingProgress
+
   if (!progress) {
-    const { data: newProgress } = await supabase
-      .from("progress")
-      .insert({
-        user_id: user.id,
-        course_id: course.id,
-        progress_percentage: 0,
-        completed: false,
-      })
-      .select()
-      .single()
-    progress = newProgress
+    try {
+      const { data: newProgress, error } = await supabase
+        .from("progress")
+        .insert({
+          user_id: user.id,
+          course_id: course.id,
+          progress_percentage: 0,
+          completed: false,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error("[v0] Error creating progress:", error)
+        // If insert fails, try to retrieve again in case of race condition
+        const { data: retryProgress } = await supabase
+          .from("progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", course.id)
+          .maybeSingle()
+        progress = retryProgress
+      } else {
+        progress = newProgress
+      }
+    } catch (error) {
+      console.error("[v0] Unexpected error with progress:", error)
+    }
   }
 
   const resources = course.resources || []
