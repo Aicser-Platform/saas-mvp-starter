@@ -11,8 +11,8 @@ import { getProfileData } from "@/lib/supabase/admin"
 import { VideoPlayer } from "@/components/dashboard/video-player"
 import { CourseResources } from "@/components/dashboard/course-resources"
 
-export default async function CoursePage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
 
   const {
@@ -32,10 +32,12 @@ export default async function CoursePage({ params }: { params: { id: string } })
   }
 
   // Check if user has access to this course
+  // Admins have access to all courses
+  const isAdmin = profile?.role === 'admin'
   const tierHierarchy = { free: 0, pro: 1, premium: 2 }
   const userTierLevel = tierHierarchy[profile?.subscription_tier as keyof typeof tierHierarchy]
   const courseTierLevel = tierHierarchy[course.required_tier as keyof typeof tierHierarchy]
-  const hasAccess = userTierLevel >= courseTierLevel
+  const hasAccess = isAdmin || userTierLevel >= courseTierLevel
 
   if (!hasAccess) {
     redirect("/dashboard/subscription")
