@@ -31,16 +31,20 @@ export function CourseManagementClient({ courses }: { courses: any[] }) {
 
   return (
     <>
-      <Button onClick={() => setCreateOpen(true)} className="gap-2">
-        <Plus className="h-4 w-4" />
-        New Course
-      </Button>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            All Courses ({courses?.length || 0})
+          <CardTitle className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              All Courses ({courses?.length || 0})
+            </div>
+            <div>
+              <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Course
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>

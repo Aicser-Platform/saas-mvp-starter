@@ -11,6 +11,20 @@ A world-class, full-stack SaaS MVP for AI and machine learning education built w
 - **Subscription Tiers**: Free, Pro, and Premium plans with different access levels
 - **Stripe Integration**: Secure payment processing and subscription management
 - **User Dashboard**: Personalized learning dashboard with stats and recent activity
+- **AI Assistant Chatbot**: 
+  + Streaming responses using AI SDK v5 and OpenAI GPT-5-mini
+  + Two intelligent tools:
+      * Document Search Tool: Searches course materials, Google Drive, and Google Search
+      * Course Info Tool: Retrieves progress, resources, lessons, and difficulty information
+  + Context-aware responses specific to each course
+
+  ## User Experience
+   **The chatbot can:**
+   1. Answer questions about course content
+   2. Search for relevant documents and resources
+   3. Provide course information (progress, difficulty, resources)
+   4. Explain difficult concepts
+   5. Help find additional learning materials
 
 ### Admin Features
 - **Admin Dashboard**: Comprehensive analytics and platform metrics

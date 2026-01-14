@@ -47,9 +47,9 @@ export function CourseResources({ resources }: CourseResourcesProps) {
         <CardTitle>Course Resources</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {resources.map((resource) => (
+        {resources.map((resource, index) => (
           <div
-            key={resource.id}
+            key={resource.id ?? `resource-${index}`}
             className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
           >
             <div className="flex items-center gap-3 flex-1">

@@ -48,7 +48,7 @@ export default async function AdminCoursesPage() {
     <div className="flex flex-col min-h-screen">
       <AdminHeader profile={profile} />
       <main className="flex-1 p-6 md:p-8 space-y-8">
-        <div className="flex items-center justify-between">
+        <div className="items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Course Management</h1>
             <p className="text-muted-foreground mt-2">Create, edit, and delete courses</p>

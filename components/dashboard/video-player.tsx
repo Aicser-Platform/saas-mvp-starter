@@ -65,18 +65,26 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
   const togglePlay = () => {
     if (!videoRef.current) return
 
-    if (isPlaying) {
-      videoRef.current.pause()
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(err => console.error("Play error:", err))
+      setIsPlaying(true)
     } else {
-      videoRef.current.play()
+      videoRef.current.pause()
+      setIsPlaying(false)
     }
-    setIsPlaying(!isPlaying)
   }
 
   const toggleMute = () => {
     if (!videoRef.current) return
-    videoRef.current.muted = !isMuted
-    setIsMuted(!isMuted)
+    const newMutedState = !isMuted
+    videoRef.current.muted = newMutedState
+    setIsMuted(newMutedState)
+    if (newMutedState) {
+      videoRef.current.volume = 0
+    } else {
+      videoRef.current.volume = volume > 0 ? volume : 0.5
+      if (volume === 0) setVolume(0.5)
+    }
   }
 
   const handleVolumeChange = (value: number[]) => {
@@ -166,6 +174,8 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
 
     const handleWaiting = () => setIsLoading(true)
     const handleCanPlay = () => setIsLoading(false)
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
     const handleEnded = () => setIsPlaying(false)
 
     const handleError = () => {
@@ -187,6 +197,8 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
     video.addEventListener("progress", handleProgress)
     video.addEventListener("waiting", handleWaiting)
     video.addEventListener("canplay", handleCanPlay)
+    video.addEventListener("play", handlePlay)
+    video.addEventListener("pause", handlePause)
     video.addEventListener("ended", handleEnded)
     video.addEventListener("error", handleError)
 
@@ -196,6 +208,8 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
       video.removeEventListener("progress", handleProgress)
       video.removeEventListener("waiting", handleWaiting)
       video.removeEventListener("canplay", handleCanPlay)
+      video.removeEventListener("play", handlePlay)
+      video.removeEventListener("pause", handlePause)
       video.removeEventListener("ended", handleEnded)
       video.removeEventListener("error", handleError)
     }
@@ -204,6 +218,14 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (!videoRef.current) return
+
+      // Ignore keyboard shortcuts when user is typing in input/textarea
+      const target = e.target as HTMLElement
+      const isTyping = target.tagName === "INPUT" || 
+                       target.tagName === "TEXTAREA" || 
+                       target.isContentEditable
+
+      if (isTyping) return
 
       switch (e.key.toLowerCase()) {
         case " ":
@@ -346,12 +368,12 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
             className="w-full h-1.5 bg-white/20 rounded-full cursor-pointer mb-4 group/progress hover:h-2 transition-all"
             onClick={handleProgressClick}
           >
-            <div className="absolute h-full bg-white/30 rounded-full" style={{ width: `${buffered}%` }} />
+            <div className="absolute h-full bg-white/30 rounded-full pointer-events-none" style={{ width: `${buffered}%` }} />
             <div
-              className="relative h-full bg-primary rounded-full transition-all"
+              className="relative h-full bg-primary rounded-full transition-all pointer-events-none"
               style={{ width: `${progressPercent}%` }}
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity pointer-events-none" />
             </div>
           </div>
 
@@ -392,13 +414,13 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                     <Settings className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 z-[60]" sideOffset={5}>
                   <div className="px-2 py-1.5 text-sm font-semibold">Playback Speed</div>
                   {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((rate) => (
                     <DropdownMenuItem
