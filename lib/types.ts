@@ -22,6 +22,8 @@ export interface Course {
   difficulty: "beginner" | "intermediate" | "advanced"
   required_tier: "free" | "pro" | "premium"
   thumbnail_url: string | null
+  video_url: string
+  resources: Array<{ title: string; url: string; type: string }> | null
   created_at: string
   updated_at: string
 }

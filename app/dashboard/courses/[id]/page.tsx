@@ -10,6 +10,7 @@ import { CourseActions } from "@/components/dashboard/course-actions"
 import { getProfileData } from "@/lib/supabase/admin"
 import { VideoPlayer } from "@/components/dashboard/video-player"
 import { CourseResources } from "@/components/dashboard/course-resources"
+import { CoursePageClient } from "@/components/course/course-page-client"
 
 export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,7 +34,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
   // Check if user has access to this course
   // Admins have access to all courses
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile?.role === "admin"
   const tierHierarchy = { free: 0, pro: 1, premium: 2 }
   const userTierLevel = tierHierarchy[profile?.subscription_tier as keyof typeof tierHierarchy]
   const courseTierLevel = tierHierarchy[course.required_tier as keyof typeof tierHierarchy]
@@ -86,97 +87,99 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const resources = course.resources || []
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <DashboardHeader profile={profile} />
-      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-8">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-        </div>
+    <CoursePageClient courseId={course.id} courseTitle={course.title}>
+      <div className="flex flex-col min-h-screen">
+        <DashboardHeader profile={profile} />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-8">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-4 flex-wrap">
-                <Badge variant={course.difficulty === "beginner" ? "default" : "secondary"} className="capitalize">
-                  {course.difficulty}
-                </Badge>
-                <Badge variant="outline" className="capitalize">
-                  {course.required_tier}
-                </Badge>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <Badge variant={course.difficulty === "beginner" ? "default" : "secondary"} className="capitalize">
+                    {course.difficulty}
+                  </Badge>
+                  <Badge variant="outline" className="capitalize">
+                    {course.required_tier}
+                  </Badge>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{course.title}</h1>
+                <p className="text-base md:text-lg text-muted-foreground">{course.description}</p>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{course.title}</h1>
-              <p className="text-base md:text-lg text-muted-foreground">{course.description}</p>
+
+              <VideoPlayer videoUrl={course.video_url} title={course.title} />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Content</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-sm max-w-none dark:prose-invert">
+                  <p>{course.content || "Course content will be available soon."}</p>
+                </CardContent>
+              </Card>
+
+              <CourseResources resources={resources} />
             </div>
 
-            <VideoPlayer videoUrl={course.video_url} title={course.title} />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Content</CardTitle>
-              </CardHeader>
-              <CardContent className="prose prose-sm max-w-none dark:prose-invert">
-                <p>{course.content || "Course content will be available soon."}</p>
-              </CardContent>
-            </Card>
-
-            <CourseResources resources={resources} />
-          </div>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Progress</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Completion</span>
-                    <span className="font-medium">{progress?.progress_percentage || 0}%</span>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Progress</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Completion</span>
+                      <span className="font-medium">{progress?.progress_percentage || 0}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${progress?.progress_percentage || 0}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${progress?.progress_percentage || 0}%` }}
-                    />
+
+                  <CourseActions
+                    courseId={course.id}
+                    userId={user.id}
+                    currentProgress={progress?.progress_percentage || 0}
+                    isCompleted={progress?.completed || false}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Difficulty:</span>
+                    <span className="font-medium capitalize">{course.difficulty}</span>
                   </div>
-                </div>
-
-                <CourseActions
-                  courseId={course.id}
-                  userId={user.id}
-                  currentProgress={progress?.progress_percentage || 0}
-                  isCompleted={progress?.completed || false}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Difficulty:</span>
-                  <span className="font-medium capitalize">{course.difficulty}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Last accessed:</span>
-                  <span className="font-medium">
-                    {progress?.last_accessed ? new Date(progress.last_accessed).toLocaleDateString() : "Never"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Last accessed:</span>
+                    <span className="font-medium">
+                      {progress?.last_accessed ? new Date(progress.last_accessed).toLocaleDateString() : "Never"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </CoursePageClient>
   )
 }
