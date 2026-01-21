@@ -12,7 +12,6 @@ A world-class, full-stack SaaS MVP for AI and machine learning education built w
 - **Stripe Integration**: Secure payment processing and subscription management
 - **User Dashboard**: Personalized learning dashboard with stats and recent activity
 - **AI Assistant Chatbot**: 
-  + Streaming responses using AI SDK v5 and OpenAI GPT-5-mini
   + Two intelligent tools:
       * Document Search Tool: Searches course materials, Google Drive, and Google Search
       * Course Info Tool: Retrieves progress, resources, lessons, and difficulty information
@@ -81,6 +80,7 @@ A world-class, full-stack SaaS MVP for AI and machine learning education built w
 3. Set up environment variables (already configured in v0):
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - Stripe: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
+   - Google Custom Search API: `GOOGLE_CUSTOM_SEARCH_API_KEY`, `GOOGLE_CUSTOM_SEARCH_ENGINE_ID`
 
 4. Run database migrations:
    - Execute SQL scripts in the `scripts/` folder in order

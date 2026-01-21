@@ -3,14 +3,12 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { Bot, ChevronDown, Send, Sparkles, User, Loader2, FileText, Search } from "lucide-react"
+import { Bot, ChevronDown, Send, Sparkles, Loader2, FileText, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AIChatbotProps {
@@ -20,34 +18,19 @@ interface AIChatbotProps {
   onToggle: () => void
 }
 
+interface SearchHistory {
+  query: string
+  results: any[]
+  timestamp: Date
+}
+
 export function AIChatbot({ courseId, courseTitle, isOpen, onToggle }: AIChatbotProps) {
   const [input, setInput] = useState("")
+  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat/assistant" }),
-    body: { courseId },
-    initialMessages: [
-      {
-        id: "welcome",
-        role: "assistant",
-        parts: [
-          {
-            type: "text",
-            text: `Hi! I'm your AI learning assistant for "${courseTitle}". I can help you:\n\n• Answer questions about the course content\n• Search for relevant documents and resources\n• Explain difficult concepts\n• Find additional learning materials\n\nWhat would you like to know?`,
-          },
-        ],
-      },
-    ],
-  })
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
 
   // Focus input when chat opens
   useEffect(() => {
@@ -56,76 +39,56 @@ export function AIChatbot({ courseId, courseTitle, isOpen, onToggle }: AIChatbot
     }
   }, [isOpen])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || status !== "ready") return
+  // Auto-scroll to bottom when new results added
+  useEffect(() => {
+    if (scrollRef.current) {
+      const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight
+      }
+    }
+  }, [searchHistory, isLoading, error])
 
-    sendMessage({ text: input })
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const currentQuery = input.trim()
+    setIsLoading(true)
+    setError(null)
     setInput("")
+
+    try {
+      const response = await fetch("/api/google-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: currentQuery, source: "google-search", courseId }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Search failed")
+      }
+
+      const data = await response.json()
+      setSearchHistory((prev) => [
+        ...prev,
+        {
+          query: currentQuery,
+          results: data.results || [],
+          timestamp: new Date(),
+        },
+      ])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const renderMessageContent = (parts: any[]) => {
-    return parts.map((part, index) => {
-      switch (part.type) {
-        case "text":
-          return (
-            <div key={index} className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="whitespace-pre-wrap leading-relaxed">{part.text}</p>
-            </div>
-          )
-
-        case "tool-searchDocuments":
-          if (part.state === "output-available") {
-            return (
-              <div key={index} className="mt-2 space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Search className="h-3 w-3" />
-                  <span>Found {part.output.count} documents</span>
-                </div>
-                {part.output.results.map((result: any, idx: number) => (
-                  <Card key={idx} className="bg-muted/50">
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 mt-0.5 text-primary" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{result.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{result.snippet}</p>
-                          <Badge variant="outline" className="mt-2 text-xs">
-                            {result.source}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )
-          }
-          return (
-            <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Searching documents...</span>
-            </div>
-          )
-
-        case "tool-getCourseInfo":
-          if (part.state === "output-available") {
-            return (
-              <div key={index} className="mt-2">
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="p-3">
-                    <p className="text-sm">{part.output}</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )
-          }
-          return null
-
-        default:
-          return null
-      }
-    })
+  const clearHistory = () => {
+    setSearchHistory([])
+    setError(null)
   }
 
   return (
@@ -144,66 +107,108 @@ export function AIChatbot({ courseId, courseTitle, isOpen, onToggle }: AIChatbot
           </div>
           <div>
             <h3 className="font-semibold text-sm">AI Assistant</h3>
-            <p className="text-xs text-muted-foreground">Always here to help</p>
+            <p className="text-xs text-muted-foreground">Google search powered</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
-          <ChevronDown className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {searchHistory.length > 0 && (
+            <Button variant="ghost" size="icon" onClick={clearHistory} className="h-8 w-8" title="Clear history">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "flex gap-3 animate-in fade-in-50 slide-in-from-bottom-2",
-                message.role === "user" ? "justify-end" : "justify-start",
-              )}
-            >
-              {message.role === "assistant" && (
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3",
-                  message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
-                )}
-              >
-                {renderMessageContent(message.parts)}
+      <ScrollArea ref={scrollRef} className="flex-1 overflow-hidden">
+        <div className="p-4 space-y-6 pb-20">
+          {searchHistory.length === 0 && !isLoading && !error && (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <div className="relative mb-4">
+                <Bot className="h-12 w-12 text-muted-foreground/50" />
+                <Sparkles className="h-5 w-5 text-primary absolute -top-1 -right-1" />
               </div>
-              {message.role === "user" && (
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary-foreground" />
+              <p className="text-sm text-muted-foreground">Ask me anything about the course</p>
+              <p className="text-xs text-muted-foreground mt-1">I'll search the web for you</p>
+            </div>
+          )}
+
+          {searchHistory.map((search, historyIdx) => (
+            <div key={historyIdx} className="space-y-3">
+              {/* Query */}
+              <div className="bg-primary/10 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Search className="h-3 w-3 text-primary" />
+                  <p className="text-sm font-medium">{search.query}</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {search.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+
+              {/* Results */}
+              {search.results.length > 0 ? (
+                <div className="space-y-2 ml-2 border-l-2 border-primary/20 pl-3">
+                  <p className="text-xs text-muted-foreground">
+                    Found {search.results.length} results
+                  </p>
+                  {search.results.map((result, idx) => (
+                    <Card key={idx} className="bg-muted/50 hover:bg-muted transition-colors">
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-2">
+                          <FileText className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium hover:underline hover:text-primary block"
+                            >
+                              {result.title}
+                            </a>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {result.snippet}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {result.source}
+                              </Badge>
+                              <a
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline truncate max-w-[150px]"
+                              >
+                                {result.url}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="ml-2 border-l-2 border-primary/20 pl-3">
+                  <p className="text-xs text-muted-foreground">No results found</p>
                 </div>
               )}
             </div>
           ))}
-          {status === "streaming" && (
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary" />
-              </div>
-              <div className="bg-muted rounded-2xl px-4 py-3">
-                <div className="flex gap-1">
-                  <div
-                    className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  />
-                  <div
-                    className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce"
-                    style={{ animationDelay: "150ms" }}
-                  />
-                  <div
-                    className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce"
-                    style={{ animationDelay: "300ms" }}
-                  />
-                </div>
-              </div>
+
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+              {error}
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="flex gap-3 text-sm text-muted-foreground items-center p-3 bg-muted/30 rounded-lg">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Searching...</span>
             </div>
           )}
         </div>
@@ -217,14 +222,14 @@ export function AIChatbot({ courseId, courseTitle, isOpen, onToggle }: AIChatbot
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything..."
-            disabled={status !== "ready"}
+            disabled={isLoading}
             className="flex-1"
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || status !== "ready"} className="flex-shrink-0">
-            {status === "streaming" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <Button type="submit" size="icon" disabled={!input.trim() || isLoading} className="flex-shrink-0">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Powered by AI • May occasionally make mistakes</p>
+        <p className="text-xs text-muted-foreground mt-2 text-center">Powered by Google Custom Search</p>
       </div>
     </div>
   )
