@@ -32,7 +32,7 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
+      <div className="px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between relative">
         {/* Logo */}
         <Link 
             href="/dashboard" 
@@ -50,10 +50,10 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
               />
               <div className="absolute inset-0 rounded-lg bg-primary/20 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 -z-10"></div>
             </div>
-            <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser</span>
+            <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser EdTech SaaS</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+        <nav className="hidden md:flex items-center gap-6 lg:gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
             Dashboard
           </Link>

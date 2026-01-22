@@ -50,7 +50,7 @@ export function AdminHeader({ profile }: AdminHeaderProps) {
               />
               <div className="absolute inset-0 rounded-lg bg-primary/20 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 -z-10"></div>
             </div>
-            <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser Admin</span>
+            <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser EdTech SaaS</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">

@@ -12,8 +12,9 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  // Pre-fill with demo/test credentials
+  const [email, setEmail] = useState("oeurn.leesinh@dataticon.com")
+  const [password, setPassword] = useState("demo123")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()

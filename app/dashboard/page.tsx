@@ -5,6 +5,8 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { CourseList } from "@/components/dashboard/course-list"
 import { RecentProgress } from "@/components/dashboard/recent-progress"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -37,11 +39,19 @@ export default async function DashboardPage() {
     <div className="flex flex-col min-h-screen">
       <DashboardHeader profile={profile} />
       <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
-            Welcome back, {profile?.full_name || "Student"}!
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Continue your AI learning journey</p>
+        <div className="space-y-2 flex justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
+              Welcome back, {profile?.full_name || "Student"}!
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Continue your AI learning journey</p>
+          </div>
+          {/* Admin Dashboard button - top right under header */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            <Link href="/admin">
+              <Button className="bg-red-500/10 text-sm font-medium text-red-600 hover:bg-red-500/30 transition-colors" size="sm">Admin Dashboard</Button>
+            </Link>
+          </div>
         </div>
 
         <DashboardStats
