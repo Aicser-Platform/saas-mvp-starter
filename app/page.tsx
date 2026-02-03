@@ -7,7 +7,6 @@ import { Brain, Check, Sparkles, Users, Zap, GraduationCap, TrendingUp, Award } 
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { useState } from "react"
-import Image from "next/image"
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -16,31 +15,14 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between relative">
+        <div className="px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 shrink-0">
-            {/* Logo */}
-            <Link 
-              href="/" 
-              className="flex items-center gap-2.5 sm:gap-3 group relative focus:outline-none rounded-lg"
-              aria-label="Aicser Home"
-            >
-              <div className="relative">
-                <Image
-                  src="https://avatars.githubusercontent.com/u/133837356?s=400&u=f050ed1d6533a8115745104b0c23121b3a6bbeaa&v=4"
-                  alt="Aicser Logo"
-                  width={32}
-                  height={32}
-                  className="rounded-lg group-hover:shadow-lg group-hover:scale-105 transition-all duration-300"
-                  priority
-                />
-                <div className="absolute inset-0 rounded-lg bg-primary/20 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 -z-10"></div>
-              </div>
-              <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser EdTech SaaS</span>
-            </Link>
+            <Brain className="h-5 sm:h-6 w-5 sm:w-6 text-primary" />
+            <span className="font-bold text-base sm:text-xl">Aicser</span>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             <Link href="#features" className="text-sm font-medium hover:text-primary transition-colors">
               Features
             </Link>
@@ -300,25 +282,8 @@ export default function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8">
             <div className="col-span-2 sm:col-span-1 space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2">
-                {/* Logo */}
-                <Link 
-                  href="/" 
-                  className="flex items-center gap-2.5 sm:gap-3 group relative focus:outline-none rounded-lg"
-                  aria-label="Aicser Home"
-                >
-                  <div className="relative">
-                    <Image
-                      src="https://avatars.githubusercontent.com/u/133837356?s=400&u=f050ed1d6533a8115745104b0c23121b3a6bbeaa&v=4"
-                      alt="Aicser Logo"
-                      width={32}
-                      height={32}
-                      className="rounded-lg group-hover:shadow-lg group-hover:scale-105 transition-all duration-300"
-                      priority
-                    />
-                    <div className="absolute inset-0 rounded-lg bg-primary/20 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 -z-10"></div>
-                  </div>
-                  <span className="text-xl sm:text-2xl font-serif font-bold gradient-text group-hover:opacity-90 transition-opacity">Aicser</span>
-                </Link>
+                <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <span className="font-bold text-sm sm:text-base">Aicser</span>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">Master AI at your own pace.</p>
             </div>
@@ -384,7 +349,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t pt-6 sm:pt-8 text-center text-xs sm:text-sm text-muted-foreground">
-            <p>&copy; 2026 Aicser EdTech SaaS. All rights reserved.</p>
+            <p>&copy; 2025 Aicser AI Studio. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -9,17 +9,25 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Aicser EdTech SaaS - Master AI & Machine Learning",
+  title: "Aicser AI Studio - Master AI & Machine Learning",
   description:
     "Learn artificial intelligence and machine learning at your own pace with expert-led courses. Join thousands of students mastering AI with Aicser AI Studio.",
   generator: "v0.app",
   keywords: ["AI learning", "machine learning", "artificial intelligence", "online courses", "AI education"],
-  authors: [{ name: "Aicser EdTech SaaS" }],
+  authors: [{ name: "Aicser AI Studio" }],
   icons: {
     icon: [
       {
-        url: "https://avatars.githubusercontent.com/u/133837356?s=400&u=f050ed1d6533a8115745104b0c23121b3a6bbeaa&v=4",
-        type: "image/png",
+        url: "/icon-light-32x32.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-dark-32x32.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/icon.svg",
+        type: "image/svg+xml",
       },
     ],
     apple: "/apple-icon.png",

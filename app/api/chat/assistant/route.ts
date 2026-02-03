@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const maxDuration = 30
 
-// Tool for searching documents
+// Tool for searching documents (simulated - can be replaced with actual Google Drive/Search API)
 const searchDocumentsTool = tool({
   description: "Search for relevant documents, resources, or information related to the course content",
   inputSchema: z.object({
@@ -11,84 +11,32 @@ const searchDocumentsTool = tool({
     source: z.enum(["course", "google-drive", "google-search"]).describe("Where to search"),
   }),
   execute: async ({ query, source }) => {
-    console.log(`[AI Assistant] Searching ${source} for: ${query}`)
+    // Simulated document search - replace with actual Google Drive/Search API integration
+    console.log(`[v0] Searching ${source} for: ${query}`)
 
-    // Handle Google Custom Search API by calling the google-search endpoint
-    if (source === "google-search") {
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-        const response = await fetch(`${baseUrl}/api/google-search`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, source: "google-search" }),
-        })
+    // In production, integrate with:
+    // - Google Drive API for course materials
+    // - Google Custom Search API for web searches
+    // - Your course database for internal resources
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || "Search request failed")
-        }
-
-        return await response.json()
-      } catch (error) {
-        console.error("Google Search error:", error)
-        return {
-          results: [
-            {
-              title: "Search Error",
-              snippet: error instanceof Error ? error.message : "Failed to perform Google search. Please check API configuration.",
-              source: "google-search",
-              url: "#",
-            },
-          ],
-          count: 0,
-        }
-      }
-    }
-
-    // Mock implementations for other sources (to be implemented later)
-    if (source === "course") {
-      // TODO: Implement course database search
-      const mockResults = [
-        {
-          title: `${query} - Course Material`,
-          snippet: `Relevant information about ${query} from the course content...`,
-          source: source,
-          url: "#",
-        },
-        {
-          title: `Understanding ${query}`,
-          snippet: `Additional context and examples for ${query}...`,
-          source: source,
-          url: "#",
-        },
-      ]
-
-      return {
-        results: mockResults,
-        count: mockResults.length,
-      }
-    }
-
-    if (source === "google-drive") {
-      // TODO: Implement Google Drive API search
-      const mockResults = [
-        {
-          title: `${query} - Google Drive Document`,
-          snippet: `Document about ${query} from Google Drive...`,
-          source: source,
-          url: "#",
-        },
-      ]
-
-      return {
-        results: mockResults,
-        count: mockResults.length,
-      }
-    }
+    const mockResults = [
+      {
+        title: `${query} - Course Material`,
+        snippet: `Relevant information about ${query} from the course content...`,
+        source: source,
+        url: "#",
+      },
+      {
+        title: `Understanding ${query}`,
+        snippet: `Additional context and examples for ${query}...`,
+        source: source,
+        url: "#",
+      },
+    ]
 
     return {
-      results: [],
-      count: 0,
+      results: mockResults,
+      count: mockResults.length,
     }
   },
 })
@@ -127,7 +75,7 @@ ${courseId ? `Current course ID: ${courseId}` : ""}`
   const result = streamText({
     model: "openai/gpt-5-mini",
     system: systemPrompt,
-    messages: await convertToModelMessages(messages),
+    messages: convertToModelMessages(messages),
     tools: {
       searchDocuments: searchDocumentsTool,
       getCourseInfo: getCourseInfoTool,
