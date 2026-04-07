@@ -12,10 +12,10 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useEffect } from "react"
-import type { Profile } from "@/lib/types"
+import type { User } from "@/lib/types"
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<User | null>(null)
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)

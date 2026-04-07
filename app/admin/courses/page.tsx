@@ -2,44 +2,50 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { CourseManagementClient } from "@/components/admin/course-management-client"
+import { getProfileData } from "@/lib/supabase/admin"
+import type { Course } from "@/lib/types"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
 export default async function AdminCoursesPage() {
   const supabase = await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  if (!session) redirect("/auth/login")
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+  const profile = await getProfileData(session.user.id)
+  if (profile?.role !== "admin") redirect("/dashboard")
 
-  if (profile?.role !== "admin") {
-    redirect("/dashboard")
-  }
+  const token = session.access_token
 
-  const { data: courses } = await supabase.from("courses").select("*").order("created_at", { ascending: false })
+  // Fetch courses from FastAPI
+  const coursesRes = await fetch(`${API_BASE}/courses/`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  })
+  const courses: Course[] = coursesRes.ok ? await coursesRes.json() : []
 
-  // Get enrollment stats for each course
+  // Fetch enrollment counts per course from FastAPI
   const coursesWithStats = await Promise.all(
-    (courses || []).map(async (course) => {
-      const { count: enrollments } = await supabase
-        .from("progress")
-        .select("*", { count: "exact" })
-        .eq("course_id", course.id)
-
-      const { count: completions } = await supabase
-        .from("progress")
-        .select("*", { count: "exact" })
-        .eq("course_id", course.id)
-        .eq("completed", true)
-
-      return {
-        ...course,
-        enrollments: enrollments || 0,
-        completions: completions || 0,
+    courses.map(async (course) => {
+      try {
+        const progressRes = await fetch(
+          `${API_BASE}/course-progress/?course_id=${course.id}&limit=1000`,
+          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+        )
+        const progress: Array<{ completed: boolean }> = progressRes.ok
+          ? await progressRes.json()
+          : []
+        return {
+          ...course,
+          enrollments: progress.length,
+          completions: progress.filter((p) => p.completed).length,
+        }
+      } catch {
+        return { ...course, enrollments: 0, completions: 0 }
       }
     }),
   )

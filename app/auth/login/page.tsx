@@ -26,7 +26,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
         options: {
@@ -34,6 +34,16 @@ export default function LoginPage() {
         },
       })
       if (error) throw error
+
+      // Sync user to local DB — upserts the row with full_name from JWT metadata
+      if (data.session?.access_token) {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+        await fetch(`${apiBase}/users/sync`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        }).catch(() => {/* non-fatal — /users/me on dashboard will retry */})
+      }
+
       router.push("/dashboard")
       router.refresh()
     } catch (error: unknown) {

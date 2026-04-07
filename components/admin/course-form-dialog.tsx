@@ -19,8 +19,8 @@ interface CourseFormDialogProps {
     title: string
     description: string
     content: string
-    difficulty: string
-    required_tier: string
+    difficulty: "beginner" | "intermediate" | "advanced"
+    required_tier: "free" | "pro" | "premium"
     thumbnail_url: string
   }
   onSuccess: () => void

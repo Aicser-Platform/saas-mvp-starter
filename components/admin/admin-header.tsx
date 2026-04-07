@@ -1,6 +1,6 @@
 "use client"
 
-import type { Profile } from "@/lib/types"
+import type { User as UserProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/client"
 import Image from "next/image"
 
 interface AdminHeaderProps {
-  profile: Profile | null
+  profile: UserProfile | null
 }
 
 export function AdminHeader({ profile }: AdminHeaderProps) {

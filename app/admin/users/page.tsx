@@ -2,25 +2,29 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { UserManagementClient } from "@/components/admin/user-management-client"
+import { getProfileData } from "@/lib/supabase/admin"
+import type { User } from "@/lib/types"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  if (!session) redirect("/auth/login")
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  const profile = await getProfileData(session.user.id)
+  if (profile?.role !== "admin") redirect("/dashboard")
 
-  if (profile?.role !== "admin") {
-    redirect("/dashboard")
-  }
-
-  const { data: users } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+  // Fetch all users from FastAPI
+  const res = await fetch(`${API_BASE}/users/admin/all`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    cache: "no-store",
+  })
+  const users: User[] = res.ok ? await res.json() : []
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -31,7 +35,7 @@ export default async function AdminUsersPage() {
           <p className="text-muted-foreground mt-2">View and manage all registered users</p>
         </div>
 
-        <UserManagementClient users={users || []} />
+        <UserManagementClient users={users} />
       </main>
     </div>
   )

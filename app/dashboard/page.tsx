@@ -7,33 +7,44 @@ import { CourseList } from "@/components/dashboard/course-list"
 import { RecentProgress } from "@/components/dashboard/recent-progress"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import type { Course, Progress } from "@/lib/types"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  if (!session) redirect("/auth/login")
 
-  const profile = await getProfileData(user.id)
+  const profile = await getProfileData(session.user.id)
+  const token = session.access_token
 
-  // Get courses
-  const { data: courses } = await supabase.from("courses").select("*").order("created_at", { ascending: false })
+  // Get courses from FastAPI
+  let courses: Course[] = []
+  try {
+    const res = await fetch(`${API_BASE}/courses/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    if (res.ok) courses = await res.json()
+  } catch {}
 
-  // Get user progress
-  const { data: progress } = await supabase
-    .from("progress")
-    .select("*, courses(*)")
-    .eq("user_id", user.id)
-    .order("last_accessed", { ascending: false })
-    .limit(5)
+  // Get user's progress from FastAPI
+  let progress: Progress[] = []
+  try {
+    const res = await fetch(`${API_BASE}/course-progress/user/${session.user.id}?limit=5`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    if (res.ok) progress = await res.json()
+  } catch {}
 
-  const coursesInProgress = progress?.filter((p) => !p.completed && p.progress_percentage > 0) || []
-  const completedCourses = progress?.filter((p) => p.completed) || []
+  const coursesInProgress = progress.filter((p) => !p.completed && p.progress_percentage > 0)
+  const completedCourses = progress.filter((p) => p.completed)
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -46,16 +57,17 @@ export default async function DashboardPage() {
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">Continue your AI learning journey</p>
           </div>
-          {/* Admin Dashboard button - top right under header */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
             <Link href="/admin">
-              <Button className="bg-red-500/10 text-sm font-medium text-red-600 hover:bg-red-500/30 transition-colors" size="sm">Admin Dashboard</Button>
+              <Button className="bg-red-500/10 text-sm font-medium text-red-600 hover:bg-red-500/30 transition-colors" size="sm">
+                Admin Dashboard
+              </Button>
             </Link>
           </div>
         </div>
 
         <DashboardStats
-          totalCourses={courses?.length || 0}
+          totalCourses={courses.length}
           inProgress={coursesInProgress.length}
           completed={completedCourses.length}
           subscriptionTier={profile?.subscription_tier || "free"}
@@ -63,7 +75,7 @@ export default async function DashboardPage() {
 
         {coursesInProgress.length > 0 && <RecentProgress progress={coursesInProgress} />}
 
-        <CourseList courses={courses || []} userTier={profile?.subscription_tier || "free"} userId={user.id} />
+        <CourseList courses={courses} userTier={profile?.subscription_tier || "free"} userId={session.user.id} />
       </main>
     </div>
   )

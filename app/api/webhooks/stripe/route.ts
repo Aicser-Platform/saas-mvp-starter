@@ -1,16 +1,43 @@
 import { stripe } from "@/lib/stripe"
-import { createClient } from "@supabase/supabase-js"
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 
-// Create Supabase admin client for webhook handling
-const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET ?? ""
+
+/** Call FastAPI with the internal secret (no user token needed) */
+async function internalPatch(path: string, body: Record<string, unknown>) {
+  return fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Internal-Secret": INTERNAL_SECRET,
+    },
+    body: JSON.stringify(body),
+  })
+}
+
+async function internalPost(path: string, body: Record<string, unknown>) {
+  return fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Internal-Secret": INTERNAL_SECRET,
+    },
+    body: JSON.stringify(body),
+  })
+}
+
+/** Find a user in local DB by stripe_customer_id */
+async function getUserByCustomerId(customerId: string): Promise<{ id: string; subscription_tier: string } | null> {
+  const res = await fetch(`${API_BASE}/users/?limit=1000`, {
+    headers: { "X-Internal-Secret": INTERNAL_SECRET },
+  })
+  if (!res.ok) return null
+  const users: Array<{ id: string; stripe_customer_id: string; subscription_tier: string }> = await res.json()
+  return users.find((u) => u.stripe_customer_id === customerId) ?? null
+}
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -26,11 +53,11 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err) {
-    console.error("[v0] Webhook signature verification failed:", err)
+    console.error("[webhook] Signature verification failed:", err)
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
-  console.log("[v0] Received webhook event:", event.type)
+  console.log("[webhook] Received:", event.type)
 
   try {
     switch (event.type) {
@@ -39,36 +66,30 @@ export async function POST(req: Request) {
         const userId = session.metadata?.userId
         const tier = session.metadata?.tier
 
-        if (!userId || !tier) {
-          console.error("[v0] Missing userId or tier in checkout session metadata")
-          break
-        }
+        if (!userId || !tier) break
 
-        // Get subscription details
         const subscriptionId = session.subscription as string
 
-        // Update user profile with subscription details
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_tier: tier,
-            subscription_status: "active",
-            stripe_subscription_id: subscriptionId,
-            subscription_start_date: new Date().toISOString(),
-          })
-          .eq("id", userId)
+        // Update user subscription in local DB
+        await internalPatch(`/users/${userId}`, {
+          subscription_tier: tier,
+          subscription_status: "active",
+          stripe_subscription_id: subscriptionId,
+          subscription_start_date: new Date().toISOString(),
+        })
 
         // Record payment
-        await supabaseAdmin.from("payments").insert({
+        await internalPost("/payments/", {
           user_id: userId,
-          stripe_payment_intent_id: session.payment_intent as string,
+          provider: "stripe",
+          provider_payment_id: (session.payment_intent as string) || session.id,
           amount: session.amount_total || 0,
           currency: session.currency || "usd",
           status: "succeeded",
-          subscription_tier: tier,
+          paid_at: new Date().toISOString(),
         })
 
-        console.log("[v0] Checkout session completed for user:", userId)
+        console.log("[webhook] Checkout completed for user:", userId)
         break
       }
 
@@ -76,34 +97,25 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
 
-        // Find user by customer ID
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("*")
-          .eq("stripe_customer_id", customerId)
-          .single()
-
-        if (!profile) {
-          console.error("[v0] No profile found for customer:", customerId)
+        const user = await getUserByCustomerId(customerId)
+        if (!user) {
+          console.error("[webhook] No user found for customer:", customerId)
           break
         }
 
-        // Update subscription status
         let status = "active"
         if (subscription.status === "past_due") status = "past_due"
-        else if (subscription.status === "canceled" || subscription.status === "incomplete_expired") status = "canceled"
+        else if (subscription.status === "canceled" || subscription.status === "incomplete_expired")
+          status = "canceled"
 
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_status: status,
-            subscription_end_date: subscription.cancel_at
-              ? new Date(subscription.cancel_at * 1000).toISOString()
-              : null,
-          })
-          .eq("id", profile.id)
+        await internalPatch(`/users/${user.id}`, {
+          subscription_status: status,
+          subscription_end_date: subscription.cancel_at
+            ? new Date(subscription.cancel_at * 1000).toISOString()
+            : null,
+        })
 
-        console.log("[v0] Subscription updated for user:", profile.id)
+        console.log("[webhook] Subscription updated for user:", user.id)
         break
       }
 
@@ -111,29 +123,16 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
 
-        // Find user by customer ID
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("*")
-          .eq("stripe_customer_id", customerId)
-          .single()
+        const user = await getUserByCustomerId(customerId)
+        if (!user) break
 
-        if (!profile) {
-          console.error("[v0] No profile found for customer:", customerId)
-          break
-        }
+        await internalPatch(`/users/${user.id}`, {
+          subscription_tier: "free",
+          subscription_status: "canceled",
+          subscription_end_date: new Date().toISOString(),
+        })
 
-        // Downgrade to free tier
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_tier: "free",
-            subscription_status: "canceled",
-            subscription_end_date: new Date().toISOString(),
-          })
-          .eq("id", profile.id)
-
-        console.log("[v0] Subscription canceled for user:", profile.id)
+        console.log("[webhook] Subscription canceled for user:", user.id)
         break
       }
 
@@ -141,29 +140,22 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
 
-        // Find user by customer ID
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("*")
-          .eq("stripe_customer_id", customerId)
-          .single()
+        const user = await getUserByCustomerId(customerId)
+        if (!user) break
 
-        if (!profile) {
-          console.error("[v0] No profile found for customer:", customerId)
-          break
-        }
-
-        // Record payment
-        await supabaseAdmin.from("payments").insert({
-          user_id: profile.id,
-          stripe_payment_intent_id: invoice.payment_intent as string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paymentIntentId = (invoice as any).payment_intent as string | null
+        await internalPost("/payments/", {
+          user_id: user.id,
+          provider: "stripe",
+          provider_payment_id: paymentIntentId || invoice.id,
           amount: invoice.amount_paid,
           currency: invoice.currency,
           status: "succeeded",
-          subscription_tier: profile.subscription_tier,
+          paid_at: new Date().toISOString(),
         })
 
-        console.log("[v0] Payment succeeded for user:", profile.id)
+        console.log("[webhook] Payment succeeded for user:", user.id)
         break
       }
 
@@ -171,34 +163,18 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
 
-        // Find user by customer ID
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("*")
-          .eq("stripe_customer_id", customerId)
-          .single()
+        const user = await getUserByCustomerId(customerId)
+        if (!user) break
 
-        if (!profile) {
-          console.error("[v0] No profile found for customer:", customerId)
-          break
-        }
-
-        // Update status to past_due
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_status: "past_due",
-          })
-          .eq("id", profile.id)
-
-        console.log("[v0] Payment failed for user:", profile.id)
+        await internalPatch(`/users/${user.id}`, { subscription_status: "past_due" })
+        console.log("[webhook] Payment failed for user:", user.id)
         break
       }
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("[v0] Webhook handler error:", error)
+    console.error("[webhook] Handler error:", error)
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 })
   }
 }

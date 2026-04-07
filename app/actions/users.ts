@@ -3,6 +3,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+
+async function getToken(): Promise<string> {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("Unauthorized")
+  return session.access_token
+}
+
 export async function createUser(formData: {
   full_name: string
   email: string
@@ -10,43 +19,24 @@ export async function createUser(formData: {
   subscription_tier: "free" | "pro" | "premium"
   subscription_status: "active" | "inactive" | "canceled" | "past_due"
 }) {
-  const supabase = await createClient()
+  const token = await getToken()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Note: We need a Supabase Auth UID to create users in the local DB.
+  // Admin-inviting a new user still requires Supabase Auth API.
+  // Here we only create/update the profile record for existing Auth users.
+  const res = await fetch(`${API_BASE}/users/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(formData),
+  })
 
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (profile?.role !== "admin") {
-    throw new Error("Only admins can create users")
-  }
-
-  // Note: This creates a profile entry but not an auth user
-  // For full user creation with auth, you'd need Supabase Admin API
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert([
-      {
-        full_name: formData.full_name,
-        email: formData.email,
-        role: formData.role,
-        subscription_tier: formData.subscription_tier,
-        subscription_status: formData.subscription_status,
-      },
-    ])
-    .select()
-
-  if (error) {
-    throw new Error(error.message)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? "Failed to create user")
   }
 
   revalidatePath("/admin/users")
-  return data
+  return res.json()
 }
 
 export async function updateUser(
@@ -59,69 +49,41 @@ export async function updateUser(
     subscription_status: "active" | "inactive" | "canceled" | "past_due"
   },
 ) {
-  const supabase = await createClient()
+  const token = await getToken()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(formData),
+  })
 
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (profile?.role !== "admin") {
-    throw new Error("Only admins can update users")
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({
-      full_name: formData.full_name,
-      email: formData.email,
-      role: formData.role,
-      subscription_tier: formData.subscription_tier,
-      subscription_status: formData.subscription_status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId)
-    .select()
-
-  if (error) {
-    throw new Error(error.message)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? "Failed to update user")
   }
 
   revalidatePath("/admin/users")
-  return data
+  return res.json()
 }
 
 export async function deleteUser(userId: string) {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (profile?.role !== "admin") {
-    throw new Error("Only admins can delete users")
-  }
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("Unauthorized")
 
   // Prevent self-deletion
-  if (user.id === userId) {
+  if (session.user.id === userId) {
     throw new Error("You cannot delete your own account")
   }
 
-  const { error } = await supabase.from("profiles").delete().eq("id", userId)
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
 
-  if (error) {
-    throw new Error(error.message)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? "Failed to delete user")
   }
 
   revalidatePath("/admin/users")

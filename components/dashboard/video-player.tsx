@@ -48,7 +48,7 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00"
