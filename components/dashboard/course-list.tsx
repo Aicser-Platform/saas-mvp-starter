@@ -4,7 +4,7 @@ import type { Course } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Play } from "lucide-react"
+import { Lock, Play, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -61,8 +61,22 @@ export function CourseList({ courses, userTier }: CourseListProps) {
           const isLocked = courseTierLevel > userTierLevel
 
           return (
-            <Card key={course.id} className={isLocked ? "opacity-75" : ""}>
-              <CardHeader>
+            <Card key={course.id} className={`overflow-hidden ${isLocked ? "opacity-75" : ""}`}>
+              {/* Thumbnail */}
+              {course.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={course.thumbnail_url}
+                  alt={course.title}
+                  className="w-full h-44 object-cover"
+                />
+              ) : (
+                <div className="w-full h-44 bg-muted flex items-center justify-center">
+                  <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+                </div>
+              )}
+
+              <CardHeader className="pb-2">
                 <div className="flex items-start justify-between mb-2">
                   <Badge variant={course.difficulty === "beginner" ? "default" : "secondary"} className="capitalize">
                     {course.difficulty}
@@ -72,7 +86,7 @@ export function CourseList({ courses, userTier }: CourseListProps) {
                   </Badge>
                 </div>
                 <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                <CardDescription className="line-clamp-3">{course.description}</CardDescription>
+                <CardDescription className="line-clamp-2">{course.description}</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLocked ? (

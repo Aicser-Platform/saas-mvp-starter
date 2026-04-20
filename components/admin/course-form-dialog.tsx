@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createCourse, updateCourse } from "@/app/actions/courses"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, ImageIcon } from "lucide-react"
 
 interface CourseFormDialogProps {
   open: boolean
@@ -20,7 +20,7 @@ interface CourseFormDialogProps {
     description: string
     content: string
     difficulty: "beginner" | "intermediate" | "advanced"
-    required_tier: "free" | "pro" | "premium"
+    required_plan_id: string | null
     thumbnail_url: string
   }
   onSuccess: () => void
@@ -29,12 +29,13 @@ interface CourseFormDialogProps {
 export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: CourseFormDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [thumbnailError, setThumbnailError] = useState(false)
   const [formData, setFormData] = useState({
     title: course?.title || "",
     description: course?.description || "",
     content: course?.content || "",
     difficulty: course?.difficulty || "beginner",
-    required_tier: course?.required_tier || "free",
+    required_plan_id: course?.required_plan_id || null,
     thumbnail_url: course?.thumbnail_url || "",
   })
 
@@ -56,7 +57,7 @@ export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: Cour
         description: "",
         content: "",
         difficulty: "beginner",
-        required_tier: "free",
+        required_plan_id: null,
         thumbnail_url: "",
       })
     } catch (err) {
@@ -66,9 +67,14 @@ export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: Cour
     }
   }
 
+  const handleThumbnailChange = (url: string) => {
+    setThumbnailError(false)
+    setFormData({ ...formData, thumbnail_url: url })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{course ? "Edit Course" : "Create New Course"}</DialogTitle>
         </DialogHeader>
@@ -87,6 +93,7 @@ export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: Cour
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="Course title"
+              className="placeholder:text-muted-foreground/50"
               required
             />
           </div>
@@ -96,7 +103,8 @@ export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: Cour
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of the course"
+              placeholder="Brief course description"
+              className="placeholder:text-muted-foreground/50"
               rows={3}
               required
             />
@@ -107,55 +115,59 @@ export function CourseFormDialog({ open, onOpenChange, course, onSuccess }: Cour
             <Textarea
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              placeholder="Course content and lesson details"
+              placeholder="Course content overview"
+              className="placeholder:text-muted-foreground/50"
               rows={5}
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Difficulty Level</label>
-              <Select
-                value={formData.difficulty}
-                onValueChange={(value) => setFormData({ ...formData, difficulty: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Beginner</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Required Tier</label>
-              <Select
-                value={formData.required_tier}
-                onValueChange={(value) => setFormData({ ...formData, required_tier: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Difficulty Level</label>
+            <Select
+              value={formData.difficulty}
+              onValueChange={(value) => setFormData({ ...formData, difficulty: value as any })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="beginner">Beginner</SelectItem>
+                <SelectItem value="intermediate">Intermediate</SelectItem>
+                <SelectItem value="advanced">Advanced</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
+          {/* Thumbnail URL with live preview */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Thumbnail URL</label>
             <Input
               value={formData.thumbnail_url}
-              onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-              placeholder="https://example.com/thumbnail.jpg"
+              onChange={(e) => handleThumbnailChange(e.target.value)}
+              placeholder="Image URL for thumbnail"
+              className="placeholder:text-muted-foreground/50"
             />
+            {/* Live Preview */}
+            {formData.thumbnail_url && (
+              <div className="mt-2">
+                {thumbnailError ? (
+                  <div className="flex items-center gap-2 justify-center h-32 bg-muted rounded-md border border-dashed">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Could not load image from this URL</p>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={formData.thumbnail_url}
+                    alt="Thumbnail preview"
+                    className="w-full max-h-48 object-cover rounded-md border"
+                    onError={() => setThumbnailError(true)}
+                    onLoad={() => setThumbnailError(false)}
+                  />
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

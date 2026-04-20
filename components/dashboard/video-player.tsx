@@ -29,6 +29,51 @@ interface VideoPlayerProps {
   onProgress?: (progress: number) => void
 }
 
+// ── YouTube helpers ──────────────────────────────────────────────────────────
+
+function getYouTubeId(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    // youtube.com/watch?v=ID
+    if (parsed.hostname.includes("youtube.com")) {
+      return parsed.searchParams.get("v")
+    }
+    // youtu.be/ID
+    if (parsed.hostname === "youtu.be") {
+      return parsed.pathname.slice(1)
+    }
+    // youtube.com/embed/ID
+    if (parsed.hostname.includes("youtube.com") && parsed.pathname.startsWith("/embed/")) {
+      return parsed.pathname.split("/embed/")[1]
+    }
+  } catch {}
+  return null
+}
+
+function isYouTubeUrl(url: string): boolean {
+  return !!getYouTubeId(url)
+}
+
+// ── YouTube Embed Player ─────────────────────────────────────────────────────
+
+function YouTubePlayer({ videoId, title }: { videoId: string; title: string }) {
+  return (
+    <Card className="w-full overflow-hidden">
+      <div className="relative bg-black aspect-video">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
+      </div>
+    </Card>
+  )
+}
+
+// ── Native Video Player ───────────────────────────────────────────────────────
+
 export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -49,6 +94,27 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
   const [errorMessage, setErrorMessage] = useState("")
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  // ── Detect type early ───────────────────────────────────────────────────────
+
+  if (!videoUrl) {
+    return (
+      <Card className="w-full bg-muted flex items-center justify-center min-h-96">
+        <div className="text-center p-8">
+          <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg font-medium mb-2">Video Not Available</p>
+          <p className="text-sm text-muted-foreground">This lesson video will be uploaded soon.</p>
+        </div>
+      </Card>
+    )
+  }
+
+  const youTubeId = getYouTubeId(videoUrl)
+  if (youTubeId) {
+    return <YouTubePlayer videoId={youTubeId} title={title} />
+  }
+
+  // ── Native video (mp4 / webm / etc.) ───────────────────────────────────────
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00"
@@ -152,7 +218,6 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
       setDuration(video.duration)
       setIsLoading(false)
       setHasError(false)
-      console.log("[v0] Video loaded successfully:", videoUrl)
     }
 
     const handleTimeUpdate = () => {
@@ -189,7 +254,7 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
         4: "Video source is not available",
       }
       setErrorMessage(errorMessages[errorCode || 4] || "An unknown error occurred")
-      console.error("[v0] Video error:", errorCode, video.error?.message)
+      console.error("[VideoPlayer] Video error:", errorCode, video.error?.message)
     }
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata)
@@ -219,10 +284,9 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (!videoRef.current) return
 
-      // Ignore keyboard shortcuts when user is typing in input/textarea
       const target = e.target as HTMLElement
-      const isTyping = target.tagName === "INPUT" || 
-                       target.tagName === "TEXTAREA" || 
+      const isTyping = target.tagName === "INPUT" ||
+                       target.tagName === "TEXTAREA" ||
                        target.isContentEditable
 
       if (isTyping) return
@@ -268,18 +332,6 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
     document.addEventListener("fullscreenchange", handleFullscreenChange)
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
   }, [])
-
-  if (!videoUrl) {
-    return (
-      <Card className="w-full bg-muted flex items-center justify-center min-h-96">
-        <div className="text-center p-8">
-          <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-lg font-medium mb-2">Video Not Available</p>
-          <p className="text-sm text-muted-foreground">This course video will be uploaded soon.</p>
-        </div>
-      </Card>
-    )
-  }
 
   if (hasError) {
     return (
@@ -327,13 +379,10 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
           preload="metadata"
           title={title}
           onClick={togglePlay}
-          crossOrigin="anonymous"
+          src={videoUrl}
         >
-          <source src={videoUrl} type="video/mp4" />
-          <source src={videoUrl} type="video/webm" />
-          <source src={videoUrl} type="video/ogg" />
           <track kind="captions" />
-          Your browser does not support the video tag. Please upgrade your browser.
+          Your browser does not support the video tag.
         </video>
 
         {isLoading && !hasError && (

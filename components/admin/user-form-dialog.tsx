@@ -82,7 +82,8 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
             <Input
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              placeholder="User's full name"
+              placeholder="Full name"
+              className="placeholder:text-muted-foreground/40"
               required
             />
           </div>
@@ -93,7 +94,8 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="user@example.com"
+              placeholder="email@example.com"
+              className="placeholder:text-muted-foreground/40"
               required
             />
           </div>

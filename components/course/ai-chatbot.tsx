@@ -221,9 +221,9 @@ export function AIChatbot({ courseId, courseTitle, isOpen, onToggle }: AIChatbot
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything..."
+            placeholder="Ask anything..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 placeholder:text-muted-foreground/40"
           />
           <Button type="submit" size="icon" disabled={!input.trim() || isLoading} className="flex-shrink-0">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

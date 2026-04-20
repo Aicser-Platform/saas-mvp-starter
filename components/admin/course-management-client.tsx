@@ -4,9 +4,10 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Edit2, Trash2, Plus } from "lucide-react"
+import { BookOpen, Edit2, Trash2, Plus, Settings } from "lucide-react"
 import { CourseFormDialog } from "./course-form-dialog"
 import { DeleteCourseDialog } from "./delete-course-dialog"
+import Link from "next/link"
 
 export function CourseManagementClient({ courses }: { courses: any[] }) {
   const [createOpen, setCreateOpen] = useState(false)
@@ -90,6 +91,12 @@ export function CourseManagementClient({ courses }: { courses: any[] }) {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
+                        <Link href={`/admin/courses/${course.id}/manage`}>
+                          <Button size="sm" variant="outline" className="gap-2">
+                            <Settings className="h-4 w-4" />
+                            Manage
+                          </Button>
+                        </Link>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(course)} className="gap-2">
                           <Edit2 className="h-4 w-4" />
                           Edit

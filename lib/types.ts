@@ -22,8 +22,6 @@ export interface Course {
   difficulty: "beginner" | "intermediate" | "advanced"
   required_tier: string
   thumbnail_url: string | null
-  video_url: string | null
-  resources: Array<{ title: string; url: string; type: string }> | null
   created_at: string
   updated_at: string
 }
@@ -55,14 +53,20 @@ export interface Payment {
   user?: Pick<User, "id" | "email" | "full_name">
 }
 
+export interface LessonResource {
+  title: string
+  url: string
+  type: "pdf" | "doc" | "github" | "link"
+}
+
 export interface Lesson {
   id: string
   course_id: string
   title: string
   content: string | null
   video_url: string | null
-  pdf_url: string | null
   order_index: number | null
+  resources: LessonResource[] | null
   created_at: string
 }
 
