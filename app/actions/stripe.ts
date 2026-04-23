@@ -1,8 +1,6 @@
 "use server"
 
-import { stripe } from "@/lib/stripe"
 import { createClient } from "@/lib/supabase/server"
-import { SUBSCRIPTION_PRODUCTS } from "@/lib/products"
 import type { User } from "@/lib/types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
@@ -23,78 +21,44 @@ async function getSessionAndProfile(): Promise<{ token: string; profile: User }>
 }
 
 export async function createCheckoutSession(tier: string) {
-  const { token, profile } = await getSessionAndProfile()
+  const { token } = await getSessionAndProfile()
 
-  const product = SUBSCRIPTION_PRODUCTS.find((p) => p.tier === tier)
-  if (!product || product.tier === "free") {
-    throw new Error("Invalid subscription tier")
-  }
-
-  // Create or get Stripe customer
-  let customerId = profile.stripe_customer_id
-
-  if (customerId) {
-    try {
-      await stripe.customers.retrieve(customerId)
-    } catch {
-      customerId = null
-    }
-  }
-
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: profile.email,
-      metadata: { userId: profile.id },
-    })
-    customerId = customer.id
-
-    // Update stripe_customer_id in local DB via FastAPI
-    await fetch(`${API_BASE}/users/${profile.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ stripe_customer_id: customerId }),
-    })
-  }
-
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: { name: product.name, description: product.description },
-          unit_amount: product.priceInCents,
-          recurring: { interval: "month" },
-        },
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?subscription=success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/subscription?canceled=true`,
-    metadata: { userId: profile.id, tier },
+  const res = await fetch(`${API_BASE}/stripe/create-checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ tier }),
   })
 
-  return session.url
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }))
+    const msg = typeof error.detail === "string" ? error.detail : error.detail?.message || "Failed to create checkout"
+    throw new Error(msg)
+  }
+
+  const data = await res.json()
+  return data.checkout_url
 }
 
 export async function createPortalSession() {
-  const { profile } = await getSessionAndProfile()
+  const { token } = await getSessionAndProfile()
 
-  if (!profile.stripe_customer_id) {
-    throw new Error("No Stripe customer found")
-  }
-
-  try {
-    await stripe.customers.retrieve(profile.stripe_customer_id)
-  } catch {
-    throw new Error("Invalid Stripe customer. Please contact support or try upgrading again.")
-  }
-
-  const session = await stripe.billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/subscription`,
+  const res = await fetch(`${API_BASE}/stripe/create-portal`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   })
 
-  return session.url
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }))
+    const msg = typeof error.detail === "string" ? error.detail : error.detail?.message || "Failed to create portal session"
+    throw new Error(msg)
+  }
+
+  const data = await res.json()
+  return data.portal_url
 }

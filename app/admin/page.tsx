@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -140,6 +141,41 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent Payments</CardTitle>
+            <Link href="/admin/payments" className="text-sm text-primary hover:underline font-medium">
+              View All
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {payments?.slice(0, 5).map((payment) => {
+                const user = users?.find(u => u.id === payment.user_id)
+                return (
+                  <div key={payment.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
+                    <div>
+                      <p className="text-sm font-medium">{user?.full_name || "Unknown User"}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                        +${(payment.amount / 100).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {payment.status} • {payment.provider}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+              {(!payments || payments.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">No recent payments</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   )

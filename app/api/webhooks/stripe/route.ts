@@ -29,7 +29,17 @@ async function internalPost(path: string, body: Record<string, unknown>) {
   })
 }
 
-/** Find a user in local DB by stripe_customer_id */
+/** Find a plan by name (tier) */
+async function getPlanByName(tier: string): Promise<{ id: string } | null> {
+  const res = await fetch(`${API_BASE}/plans/`, {
+    headers: { "X-Internal-Secret": INTERNAL_SECRET },
+  })
+  if (!res.ok) return null
+  const plans: Array<{ id: string; name: string }> = await res.json()
+  return plans.find((p) => p.name.toLowerCase() === tier.toLowerCase()) ?? null
+}
+
+/** Find a user by Stripe customer ID */
 async function getUserByCustomerId(customerId: string): Promise<{ id: string; subscription_tier: string } | null> {
   const res = await fetch(`${API_BASE}/users/?limit=1000`, {
     headers: { "X-Internal-Secret": INTERNAL_SECRET },
@@ -69,14 +79,26 @@ export async function POST(req: Request) {
         if (!userId || !tier) break
 
         const subscriptionId = session.subscription as string
+        const customerId = session.customer as string
 
-        // Update user subscription in local DB
-        await internalPatch(`/users/${userId}`, {
-          subscription_tier: tier,
-          subscription_status: "active",
-          stripe_subscription_id: subscriptionId,
-          subscription_start_date: new Date().toISOString(),
-        })
+        // Upsert billing account so we can look up user by Stripe customer ID
+        if (customerId) {
+          await internalPost(`/billing-accounts/upsert?user_id=${userId}&provider=stripe&customer_id=${customerId}`, {})
+        }
+
+        // Find the plan record for this tier
+        const plan = await getPlanByName(tier)
+
+        if (plan) {
+          // Create subscription record in local DB
+          await internalPost("/subscriptions/", {
+            user_id: userId,
+            plan_id: plan.id,
+            status: "active",
+            provider_subscription_id: subscriptionId,
+            current_period_start: new Date().toISOString(),
+          })
+        }
 
         // Record payment
         await internalPost("/payments/", {
@@ -86,53 +108,48 @@ export async function POST(req: Request) {
           amount: session.amount_total || 0,
           currency: session.currency || "usd",
           status: "succeeded",
+          payment_method: "card",
           paid_at: new Date().toISOString(),
         })
 
-        console.log("[webhook] Checkout completed for user:", userId)
+        console.log("[webhook] Checkout completed for user:", userId, "tier:", tier)
         break
       }
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription
-        const customerId = subscription.customer as string
-
-        const user = await getUserByCustomerId(customerId)
-        if (!user) {
-          console.error("[webhook] No user found for customer:", customerId)
-          break
-        }
+        const providerSubId = subscription.id
 
         let status = "active"
         if (subscription.status === "past_due") status = "past_due"
         else if (subscription.status === "canceled" || subscription.status === "incomplete_expired")
           status = "canceled"
 
-        await internalPatch(`/users/${user.id}`, {
-          subscription_status: status,
-          subscription_end_date: subscription.cancel_at
-            ? new Date(subscription.cancel_at * 1000).toISOString()
+        // Update subscription by provider ID
+        await internalPatch(`/subscriptions/by-provider-id/${providerSubId}`, {
+          status,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          canceled_at: subscription.canceled_at
+            ? new Date(subscription.canceled_at * 1000).toISOString()
             : null,
         })
 
-        console.log("[webhook] Subscription updated for user:", user.id)
+        console.log("[webhook] Subscription updated:", providerSubId, "status:", status)
         break
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription
-        const customerId = subscription.customer as string
+        const providerSubId = subscription.id
 
-        const user = await getUserByCustomerId(customerId)
-        if (!user) break
-
-        await internalPatch(`/users/${user.id}`, {
-          subscription_tier: "free",
-          subscription_status: "canceled",
-          subscription_end_date: new Date().toISOString(),
+        await internalPatch(`/subscriptions/by-provider-id/${providerSubId}`, {
+          status: "canceled",
+          canceled_at: new Date().toISOString(),
         })
 
-        console.log("[webhook] Subscription canceled for user:", user.id)
+        console.log("[webhook] Subscription canceled:", providerSubId)
         break
       }
 
@@ -152,6 +169,7 @@ export async function POST(req: Request) {
           amount: invoice.amount_paid,
           currency: invoice.currency,
           status: "succeeded",
+          payment_method: "card",
           paid_at: new Date().toISOString(),
         })
 
@@ -163,10 +181,18 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
 
+        // Find subscription by customer
         const user = await getUserByCustomerId(customerId)
         if (!user) break
 
-        await internalPatch(`/users/${user.id}`, { subscription_status: "past_due" })
+        // We could also find the sub by provider ID from invoice.subscription
+        const subId = invoice.subscription as string
+        if (subId) {
+          await internalPatch(`/subscriptions/by-provider-id/${subId}`, {
+            status: "past_due",
+          })
+        }
+
         console.log("[webhook] Payment failed for user:", user.id)
         break
       }

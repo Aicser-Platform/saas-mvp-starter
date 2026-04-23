@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { getProfileData } from "@/lib/supabase/admin"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { CheckoutForm } from "@/components/checkout/checkout-form"
 import { SUBSCRIPTION_PRODUCTS } from "@/lib/products"
@@ -9,14 +10,14 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const supabase = await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session) {
     redirect("/auth/login")
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  const profile = await getProfileData(session.user.id)
 
   if (!tier || tier === "free") {
     redirect("/dashboard/subscription")

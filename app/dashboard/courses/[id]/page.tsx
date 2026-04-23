@@ -27,15 +27,90 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
   // Fetch course from FastAPI
   let course: Course | null = null
+  let isLocked = false
+  let requiredTier = "free"
   try {
     const res = await fetch(`${API_BASE}/courses/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     })
-    if (res.ok) course = await res.json()
+    if (res.ok) {
+      course = await res.json()
+    } else if (res.status === 403) {
+      // Feature gate — course requires higher plan
+      const errData = await res.json().catch(() => ({}))
+      isLocked = true
+      requiredTier = errData?.detail?.required_tier || "pro"
+      // Still try to get basic course info from the list endpoint
+      try {
+        const listRes = await fetch(`${API_BASE}/courses/`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        })
+        if (listRes.ok) {
+          const allCourses: Course[] = await listRes.json()
+          course = allCourses.find((c) => c.id === id) || null
+        }
+      } catch {}
+    }
   } catch {}
 
   if (!course) redirect("/dashboard")
+
+  // If locked, show upgrade prompt
+  if (isLocked) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <DashboardHeader profile={profile} />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-4xl mx-auto w-full">
+          <div className="flex items-center gap-4 mb-8">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
+
+          {course.thumbnail_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={course.thumbnail_url}
+              alt={course.title}
+              className="w-full h-56 object-cover rounded-lg mb-6 opacity-60"
+            />
+          )}
+
+          <div className="space-y-4 mb-8">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="capitalize">{course.difficulty}</Badge>
+              <Badge variant="outline" className="capitalize border-amber-300 text-amber-600">{requiredTier} Plan Required</Badge>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{course.title}</h1>
+            <p className="text-base md:text-lg text-muted-foreground">{course.description}</p>
+          </div>
+
+          <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-900/40 mb-2">
+                <BookOpen className="h-8 w-8 text-amber-600" />
+              </div>
+              <h2 className="text-2xl font-bold">Upgrade to Access This Course</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                This course requires a <span className="font-semibold capitalize">{requiredTier}</span> plan or higher.
+                Upgrade now to unlock this and other premium content.
+              </p>
+              <Link href={`/dashboard/subscription`}>
+                <Button size="lg" className="mt-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
+                  View Upgrade Options
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
 
   // Fetch lessons for this course
   let lessons: Lesson[] = []
