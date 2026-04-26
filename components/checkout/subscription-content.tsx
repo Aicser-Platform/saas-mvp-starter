@@ -5,8 +5,10 @@ import { SUBSCRIPTION_PRODUCTS } from "@/lib/products"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Crown, Sparkles, Zap, Shield, Loader2, CreditCard, ExternalLink } from "lucide-react"
+import { Check, Crown, Sparkles, Zap, Shield, Loader2, CreditCard, ExternalLink, QrCode } from "lucide-react"
 import { createCheckoutSession, createPortalSession } from "@/app/actions/stripe"
+import { createKHQRSession } from "@/app/actions/bakong"
+import { KHQRPaymentDialog } from "@/components/checkout/khqr-payment-dialog"
 import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSubscription } from "@/lib/hooks/use-subscription"
@@ -41,6 +43,7 @@ const tierBadgeColors: Record<string, string> = {
 
 export function SubscriptionContent({ profile }: SubscriptionContentProps) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
+  const [khqrLoadingTier, setKhqrLoadingTier] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -48,6 +51,15 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
   const router = useRouter()
   
   const { tier, status, isLoading, refresh } = useSubscription()
+
+  // KHQR dialog state
+  const [khqrOpen, setKhqrOpen] = useState(false)
+  const [khqrData, setKhqrData] = useState<string | null>(null)
+  const [khqrMd5, setKhqrMd5] = useState<string | null>(null)
+  const [khqrPaymentId, setKhqrPaymentId] = useState<string | null>(null)
+  const [khqrAmountKHR, setKhqrAmountKHR] = useState(0)
+  const [khqrAmountUSD, setKhqrAmountUSD] = useState(0)
+  const [khqrTier, setKhqrTier] = useState("")
 
   useEffect(() => {
     // If user just returned from checkout success
@@ -79,6 +91,26 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start checkout")
       setLoadingTier(null)
+    }
+  }
+
+  const handleKHQRCheckout = async (targetTier: string) => {
+    setKhqrLoadingTier(targetTier)
+    setError(null)
+    setSuccessMessage(null)
+    try {
+      const result = await createKHQRSession(targetTier)
+      setKhqrData(result.qr_data)
+      setKhqrMd5(result.md5)
+      setKhqrPaymentId(result.payment_id)
+      setKhqrAmountKHR(result.amount_khr)
+      setKhqrAmountUSD(result.amount_usd)
+      setKhqrTier(targetTier)
+      setKhqrOpen(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate KHQR")
+    } finally {
+      setKhqrLoadingTier(null)
     }
   }
 
@@ -245,7 +277,7 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
                   ))}
                 </ul>
 
-                {/* Action Button */}
+                {/* Action Buttons */}
                 {isCurrentPlan ? (
                   <Button className="w-full" variant="outline" disabled>
                     <Check className="mr-2 h-4 w-4" />
@@ -268,34 +300,59 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
                     </Button>
                   ) : null
                 ) : (
-                  <Button
-                    className={`w-full ${
-                      isUpgrade
-                        ? product.tier === "premium"
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
-                          : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25"
-                        : ""
-                    }`}
-                    variant={isUpgrade ? "default" : "outline"}
-                    onClick={() => handleCheckout(product.tier)}
-                    disabled={loadingTier !== null}
-                  >
-                    {loadingTier === product.tier ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Redirecting...
-                      </>
-                    ) : isUpgrade ? (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Upgrade to {product.name}
-                      </>
-                    ) : isDowngrade ? (
-                      "Downgrade (via Billing Portal)"
-                    ) : (
-                      `Get ${product.name}`
+                  <div className="space-y-2.5">
+                    {/* Stripe Button */}
+                    <Button
+                      className={`w-full ${
+                        isUpgrade
+                          ? product.tier === "premium"
+                            ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
+                            : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25"
+                          : ""
+                      }`}
+                      variant={isUpgrade ? "default" : "outline"}
+                      onClick={() => handleCheckout(product.tier)}
+                      disabled={loadingTier !== null || khqrLoadingTier !== null}
+                    >
+                      {loadingTier === product.tier ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : isUpgrade ? (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Pay with Card
+                        </>
+                      ) : isDowngrade ? (
+                        "Downgrade (via Billing Portal)"
+                      ) : (
+                        `Get ${product.name}`
+                      )}
+                    </Button>
+
+                    {/* KHQR Button — only for upgrades */}
+                    {isUpgrade && (
+                      <Button
+                        className="w-full border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                        variant="outline"
+                        onClick={() => handleKHQRCheckout(product.tier)}
+                        disabled={loadingTier !== null || khqrLoadingTier !== null}
+                      >
+                        {khqrLoadingTier === product.tier ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating QR...
+                          </>
+                        ) : (
+                          <>
+                            <QrCode className="mr-2 h-4 w-4" />
+                            Pay with KHQR
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -305,14 +362,33 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
 
       {/* Trust Footer */}
       <div className="text-center space-y-2 pt-4 pb-8">
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Shield className="h-4 w-4" />
-          <span>Payments are securely processed by Stripe</span>
+        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <CreditCard className="h-4 w-4" />
+            <span>Stripe</span>
+          </div>
+          <span className="text-muted-foreground/40">•</span>
+          <div className="flex items-center gap-1.5">
+            <QrCode className="h-4 w-4" />
+            <span>Bakong KHQR</span>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Cancel anytime. No hidden fees. All plans include 30-day money back guarantee.
+          Payments are securely processed. Cancel anytime. No hidden fees.
         </p>
       </div>
+
+      {/* KHQR Payment Dialog */}
+      <KHQRPaymentDialog
+        open={khqrOpen}
+        onOpenChange={setKhqrOpen}
+        qrData={khqrData}
+        md5={khqrMd5}
+        paymentId={khqrPaymentId}
+        amountKHR={khqrAmountKHR}
+        amountUSD={khqrAmountUSD}
+        tier={khqrTier}
+      />
     </div>
   )
 }
