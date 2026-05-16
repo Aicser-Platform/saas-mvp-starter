@@ -1,34 +1,69 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { CourseList } from "@/components/dashboard/course-list"
+import { MyLearning } from "@/components/dashboard/my-learning"
 import { getProfileData } from "@/lib/supabase/admin"
+import type { Course, Progress } from "@/lib/types"
+import { Suspense } from "react"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
 export default async function CoursesPage() {
   const supabase = await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  if (!session) redirect("/auth/login")
 
-  const profile = await getProfileData(user.id)
+  const profile = await getProfileData(session.user.id)
+  const token = session.access_token
 
-  const { data: courses } = await supabase.from("courses").select("*").order("created_at", { ascending: false })
+  // Fetch all courses
+  let courses: Course[] = []
+  try {
+    const res = await fetch(`${API_BASE}/courses/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    if (res.ok) courses = await res.json()
+  } catch {}
+
+  // Fetch user progress
+  let progress: Progress[] = []
+  try {
+    const res = await fetch(
+      `${API_BASE}/course-progress/user/${session.user.id}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }
+    )
+    if (res.ok) progress = await res.json()
+  } catch {}
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DashboardHeader profile={profile} />
-      <main className="flex-1 p-6 md:p-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
-          <p className="text-muted-foreground mt-2">Browse and manage all available courses</p>
+      <Suspense>
+        <DashboardHeader profile={profile} />
+      </Suspense>
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Learning</h1>
+          <p className="text-muted-foreground text-sm">
+            Track your courses, progress, and achievements all in one place.
+          </p>
         </div>
 
-        <CourseList courses={courses || []} userTier={profile?.subscription_tier || "free"} userId={user.id} />
+        <Suspense>
+          <MyLearning
+            courses={courses}
+            progress={progress}
+            userTier={profile?.subscription_tier || "free"}
+            subscriptionTier={profile?.subscription_tier || "free"}
+          />
+        </Suspense>
       </main>
     </div>
   )

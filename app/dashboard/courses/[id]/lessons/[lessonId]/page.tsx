@@ -49,7 +49,7 @@ export default async function LessonPage({
     if (res.ok) course = await res.json()
   } catch {}
 
-  if (!course) redirect("/dashboard")
+  if (!course) redirect("/explore")
 
   // Fetch all lessons for this course
   let lessons: Lesson[] = []

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { AdminHeader } from "@/components/admin/admin-header"
 import { UserManagementClient } from "@/components/admin/user-management-client"
 import { getProfileData } from "@/lib/supabase/admin"
 import type { User } from "@/lib/types"
@@ -17,7 +16,7 @@ export default async function AdminUsersPage() {
   if (!session) redirect("/auth/login")
 
   const profile = await getProfileData(session.user.id)
-  if (profile?.role !== "admin") redirect("/dashboard")
+  if (profile?.role !== "admin") redirect("/explore")
 
   // Fetch all users from FastAPI
   const res = await fetch(`${API_BASE}/users/admin/all`, {
@@ -27,8 +26,7 @@ export default async function AdminUsersPage() {
   const users: User[] = res.ok ? await res.json() : []
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AdminHeader profile={profile} />
+    <div className="flex flex-col h-full">
       <main className="flex-1 p-6 md:p-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>

@@ -4,9 +4,10 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, Edit2, Trash2, Plus } from "lucide-react"
+import { Users, Edit2, Trash2, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { UserFormDialog } from "./user-form-dialog"
 import { DeleteUserDialog } from "./delete-user-dialog"
+import { Input } from "@/components/ui/input"
 
 export function UserManagementClient({ users }: { users: any[] }) {
   const [createOpen, setCreateOpen] = useState(false)
@@ -14,6 +15,26 @@ export function UserManagementClient({ users }: { users: any[] }) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [key, setKey] = useState(0)
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const filteredUsers = (users || []).filter((u) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      (u.full_name?.toLowerCase().includes(q) ?? false) ||
+      (u.email?.toLowerCase().includes(q) ?? false) ||
+      (u.role?.toLowerCase().includes(q) ?? false)
+    )
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage))
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   const handleEdit = (user: any) => {
     setSelectedUser(user)
@@ -40,8 +61,21 @@ export function UserManagementClient({ users }: { users: any[] }) {
                 <Users className="h-5 w-5 text-primary" />
                 <span className="text-lg font-semibold">All Users ({users?.length || 0})</span>
               </div>
-              <div>
-                <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <div className="flex items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Button onClick={() => setCreateOpen(true)} className="gap-2 h-9">
                   <Plus className="h-4 w-4" />
                   New User
                 </Button>
@@ -64,7 +98,14 @@ export function UserManagementClient({ users }: { users: any[] }) {
                 </tr>
               </thead>
               <tbody>
-                {users?.map((user) => (
+                {paginatedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedUsers.map((user) => (
                   <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4">{user.full_name || "N/A"}</td>
                     <td className="py-3 px-4">{user.email}</td>
@@ -122,19 +163,50 @@ export function UserManagementClient({ users }: { users: any[] }) {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 px-2">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <UserFormDialog
         key={`create-${key}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
         onSuccess={handleSuccess}
       />
-
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
 
       {selectedUser && (
         <>

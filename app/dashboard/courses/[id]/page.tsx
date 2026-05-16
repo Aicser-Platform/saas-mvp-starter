@@ -55,7 +55,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
     }
   } catch {}
 
-  if (!course) redirect("/dashboard")
+  if (!course) redirect("/explore")
 
   // If locked, show upgrade prompt
   if (isLocked) {
@@ -64,10 +64,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         <DashboardHeader profile={profile} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-4 mb-8">
-            <Link href="/dashboard">
+            <Link href="/explore">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
+                Back to Explore
               </Button>
             </Link>
           </div>
@@ -149,10 +149,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         <DashboardHeader profile={profile} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-8 max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/explore">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
+                Back to Explore
               </Button>
             </Link>
           </div>

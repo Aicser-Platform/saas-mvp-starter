@@ -88,9 +88,9 @@ export function AdminHeader({ profile }: AdminHeaderProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/dashboard" className="cursor-pointer">
+                <Link href="/explore" className="cursor-pointer">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
-                  User Dashboard
+                  Student View
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

@@ -22,6 +22,7 @@ export interface Course {
   difficulty: "beginner" | "intermediate" | "advanced"
   required_tier: string
   thumbnail_url: string | null
+  category?: string | null
   created_at: string
   updated_at: string
 }

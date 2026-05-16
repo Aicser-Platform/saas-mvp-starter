@@ -9,6 +9,7 @@ import { Check, Crown, Sparkles, Zap, Shield, Loader2, CreditCard, ExternalLink,
 import { createCheckoutSession, createPortalSession } from "@/app/actions/stripe"
 import { createKHQRSession } from "@/app/actions/bakong"
 import { KHQRPaymentDialog } from "@/components/checkout/khqr-payment-dialog"
+import { PaymentMethodDialog } from "@/components/checkout/payment-method-dialog"
 import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSubscription } from "@/lib/hooks/use-subscription"
@@ -60,6 +61,10 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
   const [khqrAmountKHR, setKhqrAmountKHR] = useState(0)
   const [khqrAmountUSD, setKhqrAmountUSD] = useState(0)
   const [khqrTier, setKhqrTier] = useState("")
+
+  // Payment Method Dialog State
+  const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
+  const [selectedTierForPayment, setSelectedTierForPayment] = useState<string | null>(null)
 
   useEffect(() => {
     // If user just returned from checkout success
@@ -212,82 +217,64 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
           const isPopular = product.tier === "pro"
 
           return (
-            <Card
-              key={product.id}
-              className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${
-                isCurrentPlan
-                  ? `ring-2 ring-primary shadow-lg ${tierBorders[product.tier]}`
-                  : isPopular
-                    ? "border-blue-200 dark:border-blue-800 shadow-md"
-                    : ""
-              }`}
-            >
-              {/* Popular Badge */}
-              {isPopular && !isCurrentPlan && (
-                <div className="absolute top-0 right-0">
-                  <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-bl-lg">
-                    <Sparkles className="h-3 w-3" />
+            <Card key={product.id} className={product.tier === "pro" ? "border-primary shadow-lg md:scale-105" : ""}>
+              <CardHeader>
+                {product.tier === "pro" && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground mb-2 w-fit">
                     Most Popular
                   </div>
-                </div>
-              )}
-
-              {/* Current Plan Badge */}
-              {isCurrentPlan && (
-                <div className="absolute top-0 right-0">
-                  <div className="flex items-center gap-1 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-bl-lg">
-                    <Check className="h-3 w-3" />
+                )}
+                {isCurrentPlan && product.tier !== "pro" && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-semibold mb-2 w-fit">
                     Current Plan
                   </div>
-                </div>
-              )}
-
-              <CardHeader className="pt-8 pb-4">
-                <div className={`inline-flex p-2.5 rounded-xl mb-3 w-fit ${tierBadgeColors[product.tier]}`}>
-                  {tierIcons[product.tier]}
-                </div>
-                <CardTitle className="text-2xl">{product.name}</CardTitle>
-                <CardDescription className="text-sm">{product.description}</CardDescription>
-
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold tracking-tight">
+                )}
+                <CardTitle className="text-xl sm:text-2xl">{product.name}</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">{product.description}</CardDescription>
+                <div className="mt-4 space-y-1">
+                  <span className="text-3xl sm:text-4xl font-bold">
                     ${product.priceInCents === 0 ? "0" : (product.priceInCents / 100).toFixed(2)}
                   </span>
                   {product.priceInCents > 0 && (
-                    <span className="text-muted-foreground text-sm font-medium">/month</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">/month</span>
                   )}
                 </div>
               </CardHeader>
-
-              <CardContent className="space-y-5 pb-8">
-                <ul className="space-y-3">
+              <CardContent className="space-y-4">
+                <ul className="space-y-2 sm:space-y-3">
                   {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2.5">
-                      <div className={`mt-0.5 rounded-full p-0.5 ${
-                        product.tier === "premium"
-                          ? "text-purple-500"
-                          : product.tier === "pro"
-                            ? "text-blue-500"
-                            : "text-slate-400"
-                      }`}>
-                        <Check className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm text-muted-foreground">{feature}</span>
+                    <li key={index} className="flex items-start gap-2">
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0 mt-0.5" />
+                      <span className="text-xs sm:text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 {/* Action Buttons */}
-                {isCurrentPlan ? (
-                  <Button className="w-full" variant="outline" disabled>
-                    <Check className="mr-2 h-4 w-4" />
-                    Current Plan
-                  </Button>
-                ) : product.tier === "free" ? (
-                  // Can't downgrade to free via checkout — use Stripe portal
-                  currentTier !== "free" ? (
+                <div className="pt-4">
+                  {isCurrentPlan ? (
+                    <Button className="w-full text-sm sm:text-base" variant="outline" disabled>
+                      <Check className="mr-2 h-4 w-4" />
+                      Current Plan
+                    </Button>
+                  ) : product.tier === "free" ? (
+                    currentTier !== "free" ? (
+                      <Button
+                        className="w-full text-sm sm:text-base"
+                        variant="outline"
+                        onClick={handleManageSubscription}
+                        disabled={portalLoading}
+                      >
+                        {portalLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          "Manage in Billing Portal"
+                        )}
+                      </Button>
+                    ) : null
+                  ) : isDowngrade ? (
                     <Button
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                       variant="outline"
                       onClick={handleManageSubscription}
                       disabled={portalLoading}
@@ -295,65 +282,30 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
                       {portalLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                        "Manage in Billing Portal"
+                        "Downgrade (via Portal)"
                       )}
                     </Button>
-                  ) : null
-                ) : (
-                  <div className="space-y-2.5">
-                    {/* Stripe Button */}
+                  ) : (
                     <Button
-                      className={`w-full ${
-                        isUpgrade
-                          ? product.tier === "premium"
-                            ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
-                            : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25"
-                          : ""
-                      }`}
-                      variant={isUpgrade ? "default" : "outline"}
-                      onClick={() => handleCheckout(product.tier)}
+                      className="w-full text-sm sm:text-base"
+                      variant={product.tier === "pro" ? "default" : "outline"}
+                      onClick={() => {
+                        setSelectedTierForPayment(product.tier)
+                        setPaymentMethodOpen(true)
+                      }}
                       disabled={loadingTier !== null || khqrLoadingTier !== null}
                     >
-                      {loadingTier === product.tier ? (
+                      {(loadingTier === product.tier || khqrLoadingTier === product.tier) ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Redirecting...
+                          Processing...
                         </>
-                      ) : isUpgrade ? (
-                        <>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Pay with Card
-                        </>
-                      ) : isDowngrade ? (
-                        "Downgrade (via Billing Portal)"
                       ) : (
-                        `Get ${product.name}`
+                        "Upgrade to " + product.name
                       )}
                     </Button>
-
-                    {/* KHQR Button — only for upgrades */}
-                    {isUpgrade && (
-                      <Button
-                        className="w-full border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                        variant="outline"
-                        onClick={() => handleKHQRCheckout(product.tier)}
-                        disabled={loadingTier !== null || khqrLoadingTier !== null}
-                      >
-                        {khqrLoadingTier === product.tier ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating QR...
-                          </>
-                        ) : (
-                          <>
-                            <QrCode className="mr-2 h-4 w-4" />
-                            Pay with KHQR
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
           )
@@ -388,6 +340,19 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
         amountKHR={khqrAmountKHR}
         amountUSD={khqrAmountUSD}
         tier={khqrTier}
+      />
+
+      {/* Payment Method Dialog */}
+      <PaymentMethodDialog
+        open={paymentMethodOpen}
+        onOpenChange={setPaymentMethodOpen}
+        tier={selectedTierForPayment || ""}
+        onSelectStripe={() => {
+          if (selectedTierForPayment) handleCheckout(selectedTierForPayment)
+        }}
+        onSelectKHQR={() => {
+          if (selectedTierForPayment) handleKHQRCheckout(selectedTierForPayment)
+        }}
       />
     </div>
   )

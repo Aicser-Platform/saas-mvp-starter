@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { AdminHeader } from "@/components/admin/admin-header"
 import { CourseManagementClient } from "@/components/admin/course-management-client"
 import { getProfileData } from "@/lib/supabase/admin"
 import type { Course } from "@/lib/types"
@@ -17,7 +16,7 @@ export default async function AdminCoursesPage() {
   if (!session) redirect("/auth/login")
 
   const profile = await getProfileData(session.user.id)
-  if (profile?.role !== "admin") redirect("/dashboard")
+  if (profile?.role !== "admin") redirect("/explore")
 
   const token = session.access_token
 
@@ -51,11 +50,10 @@ export default async function AdminCoursesPage() {
   )
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AdminHeader profile={profile} />
+    <div className="flex flex-col h-full">
       <main className="flex-1 p-6 md:p-8 space-y-8">
         <div className="items-center justify-between">
-          <div>
+          <div className="mb-6">
             <h1 className="text-3xl font-bold tracking-tight">Course Management</h1>
             <p className="text-muted-foreground mt-2">Create, edit, and delete courses</p>
           </div>

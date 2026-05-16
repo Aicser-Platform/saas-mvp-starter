@@ -17,7 +17,8 @@ export async function createCourse(formData: {
   description: string
   content: string
   difficulty: "beginner" | "intermediate" | "advanced"
-  required_plan_id?: string | null
+  required_tier?: string
+  category?: string
   thumbnail_url: string
 }) {
   const token = await getToken()
@@ -45,7 +46,8 @@ export async function updateCourse(
     description: string
     content: string
     difficulty: "beginner" | "intermediate" | "advanced"
-    required_plan_id?: string | null
+    required_tier?: string
+    category?: string
     thumbnail_url: string
   },
 ) {

@@ -88,10 +88,10 @@ export default function ProfilePage() {
       <DashboardHeader profile={profile} />
       <main className="flex-1 p-6 md:p-8 space-y-8">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard">
+          <Link href="/explore">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Back to Explore
             </Button>
           </Link>
         </div>

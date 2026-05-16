@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { AdminHeader } from "@/components/admin/admin-header"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp } from "lucide-react"
@@ -22,7 +21,7 @@ export default async function AdminPage() {
   const token = session.access_token
 
   const isAdmin = await isUserAdmin(session.user.id)
-  if (!isAdmin) redirect("/dashboard")
+  if (!isAdmin) redirect("/explore")
 
   const profile = await getProfileData(session.user.id)
   if (!profile) redirect("/auth/login")
@@ -62,8 +61,7 @@ export default async function AdminPage() {
     .slice(0, 10) ?? []
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AdminHeader profile={profile} />
+    <div className="flex flex-col h-full">
       <main className="flex-1 p-6 md:p-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
@@ -160,8 +158,15 @@ export default async function AdminPage() {
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                        +${(payment.amount / 100).toFixed(2)}
+                      <p className={`text-sm font-bold ${
+                        payment.status === "succeeded"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-muted-foreground"
+                      }`}>
+                        {payment.status === "succeeded" ? "+" : ""}
+                        {payment.currency?.toLowerCase() === "khr"
+                          ? `${payment.amount.toLocaleString("km-KH")} ៛`
+                          : `$${(payment.amount / 100).toFixed(2)} ${payment.currency?.toUpperCase() ?? "USD"}`}
                       </p>
                       <p className="text-xs text-muted-foreground capitalize">
                         {payment.status} • {payment.provider}

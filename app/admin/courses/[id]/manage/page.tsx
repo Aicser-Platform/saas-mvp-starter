@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { AdminHeader } from "@/components/admin/admin-header"
 import { getProfileData } from "@/lib/supabase/admin"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +22,7 @@ export default async function CourseManagePage({ params }: { params: Promise<{ i
   if (!session) redirect("/auth/login")
 
   const profile = await getProfileData(session.user.id)
-  if (profile?.role !== "admin") redirect("/dashboard")
+  if (profile?.role !== "admin") redirect("/explore")
 
   const token = session.access_token
 
@@ -46,8 +45,7 @@ export default async function CourseManagePage({ params }: { params: Promise<{ i
   } catch {}
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AdminHeader profile={profile} />
+    <div className="flex flex-col h-full">
       <main className="flex-1 p-6 md:p-8 space-y-6">
         {/* Navigation */}
         <div className="flex items-center gap-4">
