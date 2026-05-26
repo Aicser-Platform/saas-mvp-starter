@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use .dark class for dark mode (required for next-themes class strategy) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Studio-specific styles */
 .studio-layout {
   min-height: 100vh;
@@ -18,7 +21,32 @@
     @apply bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent;
     font-weight: 700;
   }
-  
+
+  /* Wave animation for welcome emoji */
+  @keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    20%       { transform: rotate(20deg); }
+    40%       { transform: rotate(-10deg); }
+    60%       { transform: rotate(20deg); }
+    80%       { transform: rotate(-5deg); }
+  }
+  .animate-wave {
+    display: inline-block;
+    animation: wave 1.5s ease-in-out 0.5s 2;
+    transform-origin: 70% 70%;
+  }
+
+  /* Shimmer skeleton loading */
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted-foreground) / 0.1) 50%, hsl(var(--muted)) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite;
+  }
+
   /* Zoom-in animation for Working Product image */
   @keyframes zoomIn {
     from {
@@ -639,5 +667,26 @@
       transform: translateX(100%);
       opacity: 0;
     }
+  }
+
+  /* Glassmorphism utilities */
+  .glass {
+    @apply bg-background/60 backdrop-blur-md border border-border/40;
+  }
+  .glass-card {
+    @apply bg-card/70 backdrop-blur-lg border border-border/50 shadow-lg;
+  }
+  .glass-header {
+    @apply sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/40;
+  }
+
+  /* Refined transitions */
+  .transition-soft {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Image hover lift */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
   }
 }

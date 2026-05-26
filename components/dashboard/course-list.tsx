@@ -112,7 +112,7 @@ export function CourseList({ courses, userTier }: CourseListProps) {
 
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between mb-2">
-                  <Badge variant={course.difficulty === "beginner" ? "default" : "secondary"} className="capitalize">
+                  <Badge variant={course.difficulty === "beginner" ? "success" : course.difficulty === "intermediate" ? "warning" : "destructive"} className="capitalize">
                     {course.difficulty}
                   </Badge>
                   <Badge

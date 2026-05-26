@@ -3,8 +3,6 @@ import { redirect } from "next/navigation"
 import { getProfileData } from "@/lib/supabase/admin"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { CourseExplorer } from "@/components/dashboard/course-explorer"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import type { Course } from "@/lib/types"
 import { Suspense } from "react"
 
@@ -37,34 +35,21 @@ export default async function ExplorePage({
   } catch {}
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Suspense>
         <DashboardHeader profile={profile} />
       </Suspense>
-      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
-        {/* Welcome strip */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Welcome back,{" "}
-              <span className="text-primary">{profile?.full_name?.split(" ")[0] || "Student"}</span>! 👋
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+        {/* Welcome banner */}
+        <div className="relative overflow-hidden rounded-2xl bg-primary px-6 py-6 shadow-sm">
+          <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="relative space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary-foreground">
+              Welcome back, {profile?.full_name?.split(" ")[0] || "Student"}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {courses.length} courses available · keep exploring
+            <p className="text-sm text-primary-foreground/70">
+              <span className="font-semibold text-primary-foreground">{courses.length}</span> courses available · keep exploring
             </p>
-          </div>
-          <div className="hidden md:flex items-center gap-3">
-            {profile?.role === "admin" && (
-              <Link href="/admin">
-                <Button
-                  size="sm"
-                  className="bg-red-500/10 text-red-600 hover:bg-red-500/20 font-semibold border border-red-200 dark:border-red-900"
-                  variant="ghost"
-                >
-                  Admin Dashboard
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { deleteCourse } from "@/app/actions/courses"
 import { AlertCircle } from "lucide-react"
@@ -23,7 +23,6 @@ export function DeleteCourseDialog({ open, onOpenChange, course, onSuccess }: De
   const handleDelete = async () => {
     setLoading(true)
     setError(null)
-
     try {
       await deleteCourse(course.id)
       onOpenChange(false)
@@ -37,37 +36,27 @@ export function DeleteCourseDialog({ open, onOpenChange, course, onSuccess }: De
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md rounded-xl border-border/60 shadow-lg">
         <DialogHeader>
-          <DialogTitle>Delete Course</DialogTitle>
+          <DialogTitle>Delete course?</DialogTitle>
+          <DialogDescription className="leading-relaxed">
+            <span className="font-medium text-foreground">{course.title}</span> will be permanently deleted, including all associated progress records for every user. This action cannot be undone.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">Are you sure?</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                This will permanently delete <strong>{course.title}</strong> and remove all associated progress records.
-                This action cannot be undone.
-              </p>
-            </div>
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <AlertCircle className="h-4 w-4 text-destructive" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-            {loading ? "Deleting..." : "Delete Course"}
+            {loading ? "Deleting..." : "Delete course"}
           </Button>
         </DialogFooter>
       </DialogContent>

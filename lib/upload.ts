@@ -24,5 +24,14 @@ export async function uploadFileToStorage(
     throw new Error(err.detail ?? "Upload failed")
   }
 
-  return res.json()
+  const data = await res.json()
+
+  // Backend returns relative paths (/uploads/... or /api/v1/files/...).
+  // Resolve to absolute so <video> and <img> src work from any page.
+  if (data.url?.startsWith("/")) {
+    const backendBase = API_BASE.replace(/\/api\/v1\/?$/, "")
+    data.url = `${backendBase}${data.url}`
+  }
+
+  return data
 }

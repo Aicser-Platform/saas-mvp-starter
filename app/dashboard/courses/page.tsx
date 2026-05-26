@@ -44,16 +44,19 @@ export default async function CoursesPage() {
   } catch {}
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Suspense>
         <DashboardHeader profile={profile} />
       </Suspense>
-      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Learning</h1>
-          <p className="text-muted-foreground text-sm">
-            Track your courses, progress, and achievements all in one place.
-          </p>
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+        <div className="relative overflow-hidden rounded-2xl bg-primary px-6 py-6 shadow-sm">
+          <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="relative space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary-foreground">My Learning</h1>
+            <p className="text-sm text-primary-foreground/70">
+              Track your courses, progress, and achievements in one place.
+            </p>
+          </div>
         </div>
 
         <Suspense>

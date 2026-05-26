@@ -7,6 +7,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v
 
 async function getToken(): Promise<string> {
   const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) throw new Error("Unauthorized")
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("Unauthorized")
   return session.access_token
@@ -68,11 +70,13 @@ export async function updateUser(
 
 export async function deleteUser(userId: string) {
   const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) throw new Error("Unauthorized")
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("Unauthorized")
 
   // Prevent self-deletion
-  if (session.user.id === userId) {
+  if (user.id === userId) {
     throw new Error("You cannot delete your own account")
   }
 

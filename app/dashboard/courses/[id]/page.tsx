@@ -83,7 +83,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
           <div className="space-y-4 mb-8">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="capitalize">{course.difficulty}</Badge>
+              <Badge variant={course.difficulty === "beginner" ? "success" : course.difficulty === "intermediate" ? "warning" : "destructive"} className="capitalize">{course.difficulty}</Badge>
               <Badge variant="outline" className="capitalize border-amber-300 text-amber-600">{requiredTier} Plan Required</Badge>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{course.title}</h1>
@@ -170,7 +170,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           {/* Course Header */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant={course.difficulty === "beginner" ? "default" : "secondary"} className="capitalize">
+              <Badge variant={course.difficulty === "beginner" ? "success" : course.difficulty === "intermediate" ? "warning" : "destructive"} className="capitalize">
                 {course.difficulty}
               </Badge>
             </div>

@@ -78,6 +78,7 @@ function SortableLessonItem({
         className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground transition-colors p-1"
         {...attributes}
         {...listeners}
+        suppressHydrationWarning
       >
         <GripVertical className="h-5 w-5" />
       </button>

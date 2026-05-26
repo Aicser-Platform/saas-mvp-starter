@@ -62,7 +62,7 @@ export default async function CourseManagePage({ params }: { params: Promise<{ i
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-3xl font-bold tracking-tight">{course.title}</h1>
-              <Badge variant="secondary" className="capitalize">
+              <Badge variant={course.difficulty === "beginner" ? "success" : course.difficulty === "intermediate" ? "warning" : "destructive"} className="capitalize">
                 {course.difficulty}
               </Badge>
             </div>

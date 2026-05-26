@@ -4,18 +4,14 @@ import { useState, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { Course, Progress } from "@/lib/types"
 import { CourseCard } from "@/components/dashboard/course-card"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
-  BookOpen,
-  Clock,
-  CheckCircle,
-  Award,
-  TrendingUp,
-  Flame,
-  GraduationCap,
+  BookOpen, Clock, CheckCircle, Award, TrendingUp, Flame, GraduationCap,
+  Crown, Zap, ArrowUpRight,
 } from "lucide-react"
 import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
 
 type Tab = "available" | "in_progress" | "completed"
 
@@ -26,72 +22,68 @@ interface MyLearningProps {
   subscriptionTier: string
 }
 
-// ─── Stats Banner ─────────────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({
   icon: Icon,
   label,
   value,
-  color,
   sub,
+  iconClassName,
+  iconBg,
+  accent,
 }: {
   icon: React.ElementType
   label: string
   value: string | number
-  color: string
   sub?: string
+  iconClassName: string
+  iconBg: string
+  accent: string
 }) {
   return (
-    <Card className="relative overflow-hidden">
-      <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-5`} />
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <div className={`p-2 rounded-lg ${color.replace("from-", "bg-").split(" ")[0]}/10`}>
-          <Icon className={`h-4 w-4 ${color.includes("emerald") ? "text-emerald-600" : color.includes("blue") ? "text-blue-600" : color.includes("amber") ? "text-amber-600" : color.includes("purple") ? "text-purple-600" : "text-primary"}`} />
+    <div className={`relative overflow-hidden rounded-xl border border-border/60 bg-card p-5 shadow-sm`}>
+      <div className={`absolute inset-x-0 top-0 h-0.5 ${accent}`} />
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon className={`h-4.5 w-4.5 ${iconClassName}`} />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-extrabold tracking-tight">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-      </CardContent>
-    </Card>
+      </div>
+      <div className="text-3xl font-extrabold tracking-tight leading-none">{value}</div>
+      {sub && <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>}
+    </div>
   )
 }
 
-// ─── Tab trigger ──────────────────────────────────────────────────────────────
+// ─── Tab Trigger ──────────────────────────────────────────────────────────────
 function TabTrigger({
-  active,
-  onClick,
-  children,
-  count,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-  count?: number
-}) {
+  active, onClick, children, count,
+}: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap border-b-2 ${
-        active
-          ? "border-primary text-primary"
-          : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+      className={`relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap ${
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
       {count !== undefined && (
-        <Badge
-          variant={active ? "default" : "secondary"}
-          className="text-xs h-5 px-1.5 min-w-5 rounded-full"
-        >
+        <Badge variant={active ? "default" : "ghost"} className="text-[11px] h-5 min-w-5 px-1.5 rounded-full">
           {count}
         </Badge>
+      )}
+      {active && (
+        <motion.div
+          layoutId="tab-indicator"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+          transition={{ type: "spring", stiffness: 400, damping: 35 }}
+        />
       )}
     </button>
   )
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
 function EmptyTab({ tab }: { tab: Tab }) {
   const messages: Record<Tab, { icon: React.ElementType; title: string; desc: string; link?: string; linkLabel?: string }> = {
     available: {
@@ -103,38 +95,41 @@ function EmptyTab({ tab }: { tab: Tab }) {
       icon: Flame,
       title: "Nothing in progress yet",
       desc: "Start a course to track your progress here.",
-      link: "/dashboard",
+      link: "/explore",
       linkLabel: "Explore Courses",
     },
     completed: {
       icon: GraduationCap,
       title: "No completed courses yet",
-      desc: "Finish a course and it will show up here. Keep learning!",
-      link: "/dashboard",
+      desc: "Finish a course and it will appear here. Keep going!",
+      link: "/explore",
       linkLabel: "Find a Course",
     },
   }
   const { icon: Icon, title, desc, link, linkLabel } = messages[tab]
   return (
-    <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
-      <div className="p-6 rounded-full bg-muted">
-        <Icon className="h-10 w-10 text-muted-foreground" />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center py-24 space-y-4 text-center"
+    >
+      <div className="p-6 rounded-full bg-muted/60 ring-8 ring-muted/20">
+        <Icon className="h-10 w-10 text-muted-foreground/60" />
       </div>
-      <h3 className="text-xl font-semibold">{title}</h3>
-      <p className="text-muted-foreground max-w-sm text-sm">{desc}</p>
+      <h3 className="text-xl font-bold">{title}</h3>
+      <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">{desc}</p>
       {link && linkLabel && (
-        <Link
-          href={link}
-          className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
-        >
-          {linkLabel}
+        <Link href={link}>
+          <Button className="mt-2 gap-2">
+            {linkLabel} <ArrowUpRight className="h-4 w-4" />
+          </Button>
         </Link>
       )}
-    </div>
+    </motion.div>
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export function MyLearning({ courses, progress, userTier, subscriptionTier }: MyLearningProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -144,43 +139,24 @@ export function MyLearning({ courses, progress, userTier, subscriptionTier }: My
   const tierHierarchy: Record<string, number> = { free: 0, pro: 1, premium: 2 }
   const userTierLevel = tierHierarchy[userTier] ?? 0
 
-  // Build lookup maps
   const progressByCourse = useMemo(() => {
     const map: Record<string, Progress> = {}
     for (const p of progress) map[p.course_id] = p
     return map
   }, [progress])
 
-  // Available = courses unlocked by user tier
   const availableCourses = useMemo(
-    () =>
-      courses.filter(
-        (c) => (tierHierarchy[c.required_tier] ?? 0) <= userTierLevel
-      ),
+    () => courses.filter((c) => (tierHierarchy[c.required_tier] ?? 0) <= userTierLevel),
     [courses, userTierLevel]
   )
-
-  // In Progress = started but not completed
   const inProgressCourses = useMemo(
-    () =>
-      courses.filter((c) => {
-        const p = progressByCourse[c.id]
-        return p && !p.completed && p.progress_percentage > 0
-      }),
+    () => courses.filter((c) => { const p = progressByCourse[c.id]; return p && !p.completed && p.progress_percentage > 0 }),
     [courses, progressByCourse]
   )
-
-  // Completed
   const completedCourses = useMemo(
     () => courses.filter((c) => progressByCourse[c.id]?.completed),
     [courses, progressByCourse]
   )
-
-  const tierColors: Record<string, string> = {
-    free: "text-slate-600",
-    pro: "text-blue-600",
-    premium: "text-purple-600",
-  }
 
   const switchTab = (tab: Tab) => {
     setActiveTab(tab)
@@ -190,16 +166,39 @@ export function MyLearning({ courses, progress, userTier, subscriptionTier }: My
   }
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: "available", label: "Available Courses", icon: BookOpen },
-    { id: "in_progress", label: "In Progress", icon: Clock },
-    { id: "completed", label: "Completed", icon: CheckCircle },
+    { id: "available",   label: "Available",   icon: BookOpen     },
+    { id: "in_progress", label: "In Progress",  icon: Clock        },
+    { id: "completed",   label: "Completed",    icon: CheckCircle  },
   ]
 
-  const currentCourses = activeTab === "available"
-    ? availableCourses
-    : activeTab === "in_progress"
-    ? inProgressCourses
-    : completedCourses
+  const currentCourses =
+    activeTab === "available" ? availableCourses :
+    activeTab === "in_progress" ? inProgressCourses :
+    completedCourses
+
+  const tierLabel = subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)
+
+  const planIcon = subscriptionTier === "premium" ? <Crown className="h-4.5 w-4.5" />
+    : subscriptionTier === "pro" ? <Zap className="h-4.5 w-4.5" />
+    : <Award className="h-4.5 w-4.5" />
+
+  const planIconBg = subscriptionTier === "premium"
+    ? "bg-violet-100 dark:bg-violet-900/30"
+    : subscriptionTier === "pro"
+    ? "bg-blue-100 dark:bg-blue-900/30"
+    : "bg-slate-100 dark:bg-slate-800/60"
+
+  const planIconColor = subscriptionTier === "premium"
+    ? "text-violet-600 dark:text-violet-400"
+    : subscriptionTier === "pro"
+    ? "text-blue-600 dark:text-blue-400"
+    : "text-slate-600 dark:text-slate-400"
+
+  const planAccent = subscriptionTier === "premium"
+    ? "bg-violet-500"
+    : subscriptionTier === "pro"
+    ? "bg-blue-500"
+    : "bg-slate-400"
 
   return (
     <div className="space-y-8">
@@ -209,53 +208,49 @@ export function MyLearning({ courses, progress, userTier, subscriptionTier }: My
           icon={BookOpen}
           label="Total Courses"
           value={courses.length}
-          color="from-primary to-accent"
-          sub="Available on platform"
+          sub="On the platform"
+          iconClassName="text-primary"
+          iconBg="bg-primary/10"
+          accent="bg-primary/40"
         />
         <StatCard
           icon={TrendingUp}
           label="In Progress"
           value={inProgressCourses.length}
-          color="from-amber-500 to-orange-400"
-          sub="Keep the momentum!"
+          sub="Keep going!"
+          iconClassName="text-amber-600 dark:text-amber-400"
+          iconBg="bg-amber-100 dark:bg-amber-900/30"
+          accent="bg-amber-500"
         />
         <StatCard
           icon={CheckCircle}
           label="Completed"
           value={completedCourses.length}
-          color="from-emerald-500 to-teal-400"
-          sub="Great job! 🎉"
+          sub="Great work 🎉"
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
+          accent="bg-emerald-500"
         />
         <StatCard
-          icon={Award}
+          icon={() => planIcon}
           label="Your Plan"
-          value={subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
-          color={`from-${subscriptionTier === "premium" ? "purple" : subscriptionTier === "pro" ? "blue" : "slate"}-500 to-${subscriptionTier === "premium" ? "pink" : subscriptionTier === "pro" ? "indigo" : "gray"}-400`}
-          sub={
-            subscriptionTier === "free"
-              ? "Upgrade to unlock more"
-              : "Active subscription"
-          }
+          value={tierLabel}
+          sub={subscriptionTier === "free" ? "Upgrade to unlock more" : "Active subscription"}
+          iconClassName={planIconColor}
+          iconBg={planIconBg}
+          accent={planAccent}
         />
       </div>
 
-      {/* Tabs header */}
-      <div className="border-b border-border">
-        <div className="flex gap-1 overflow-x-auto scrollbar-thin -mb-px">
+      {/* Tabs */}
+      <div className="border-b border-border/60">
+        <div className="flex gap-0 overflow-x-auto scrollbar-thin -mb-px">
           {tabs.map(({ id, label, icon: Icon }) => {
-            const count =
-              id === "available"
-                ? availableCourses.length
-                : id === "in_progress"
-                ? inProgressCourses.length
-                : completedCourses.length
+            const count = id === "available" ? availableCourses.length
+              : id === "in_progress" ? inProgressCourses.length
+              : completedCourses.length
             return (
-              <TabTrigger
-                key={id}
-                active={activeTab === id}
-                onClick={() => switchTab(id)}
-                count={count}
-              >
+              <TabTrigger key={id} active={activeTab === id} onClick={() => switchTab(id)} count={count}>
                 <Icon className="h-4 w-4" />
                 {label}
               </TabTrigger>
@@ -264,26 +259,35 @@ export function MyLearning({ courses, progress, userTier, subscriptionTier }: My
         </div>
       </div>
 
-      {/* Tab content */}
-      {currentCourses.length === 0 ? (
-        <EmptyTab tab={activeTab} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {currentCourses.map((course) => {
-            const p = progressByCourse[course.id]
-            return (
-              <CourseCard
-                key={course.id}
-                course={course}
-                userTier={userTier}
-                progressPercent={p?.progress_percentage}
-                completed={p?.completed}
-                variant="grid"
-              />
-            )
-          })}
-        </div>
-      )}
+      {/* Content */}
+      <AnimatePresence mode="wait">
+        {currentCourses.length === 0 ? (
+          <EmptyTab key={`empty-${activeTab}`} tab={activeTab} />
+        ) : (
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+          >
+            {currentCourses.map((course) => {
+              const p = progressByCourse[course.id]
+              return (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  userTier={userTier}
+                  progressPercent={p?.progress_percentage}
+                  completed={p?.completed}
+                  variant="grid"
+                />
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -7,6 +7,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v
 
 async function getToken(): Promise<string> {
   const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) throw new Error("Unauthorized")
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("Unauthorized")
   return session.access_token
@@ -100,5 +102,14 @@ export async function uploadCourseFile(formData: FormData): Promise<{ url: strin
     throw new Error(err.detail ?? "File upload failed")
   }
 
-  return res.json()
+  const data = await res.json()
+
+  // Backend returns relative paths (/uploads/... or /api/v1/files/...).
+  // Resolve to absolute URL so <img src> works from any Next.js page.
+  if (data.url?.startsWith("/")) {
+    const backendBase = API_BASE.replace(/\/api\/v1\/?$/, "")
+    data.url = `${backendBase}${data.url}`
+  }
+
+  return data
 }

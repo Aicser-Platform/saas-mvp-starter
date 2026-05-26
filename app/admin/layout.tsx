@@ -22,7 +22,7 @@ export default async function AdminLayout({
   const profile = await getProfileData(session.user.id)
 
   return (
-    <div className="flex min-h-screen bg-muted/20">
+    <div className="flex min-h-screen bg-muted/30 dark:bg-muted/10">
       <AdminSidebar profile={profile} />
       <div className="flex-1 overflow-x-hidden">
         {children}

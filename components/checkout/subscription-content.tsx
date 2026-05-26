@@ -145,24 +145,25 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
       </div>
 
       {/* Current Plan Banner */}
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${tierGradients[currentTier]} border p-6`}>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="relative overflow-hidden rounded-2xl bg-primary px-6 py-6 shadow-sm">
+        <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl bg-background/80 backdrop-blur-sm shadow-sm ${tierBadgeColors[currentTier]}`}>
+            <div className="p-3 rounded-xl bg-white/15 text-primary-foreground">
               {tierIcons[currentTier]}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold capitalize">{currentTier} Plan</h2>
+                <h2 className="text-xl font-bold capitalize text-primary-foreground">{currentTier} Plan</h2>
                 {isLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-3 w-3 animate-spin text-primary-foreground/60" />
                 ) : (
-                  <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground">
                     {isActive ? "Active" : status || "Inactive"}
-                  </Badge>
+                  </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-sm text-primary-foreground/70 mt-0.5">
                 {currentTier === "free"
                   ? "You're on the free plan. Upgrade to unlock more courses."
                   : `Your ${currentTier} subscription is ${isActive ? "active" : status}.`}
@@ -175,7 +176,7 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
               variant="outline"
               onClick={handleManageSubscription}
               disabled={portalLoading}
-              className="shrink-0"
+              className="shrink-0 bg-white/10 border-white/30 text-primary-foreground hover:bg-white/20"
             >
               {portalLoading ? (
                 <>
