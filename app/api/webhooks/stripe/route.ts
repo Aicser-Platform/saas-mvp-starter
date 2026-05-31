@@ -100,17 +100,9 @@ export async function POST(req: Request) {
           })
         }
 
-        // Record payment
-        await internalPost("/payments/", {
-          user_id: userId,
-          provider: "stripe",
-          provider_payment_id: (session.payment_intent as string) || session.id,
-          amount: session.amount_total || 0,
-          currency: session.currency || "usd",
-          status: "succeeded",
-          payment_method: "card",
-          paid_at: new Date().toISOString(),
-        })
+        // NOTE: the payment row is recorded on `invoice.payment_succeeded` (the
+        // canonical charge event, which also covers renewals). Recording it here
+        // too would create a duplicate for the first charge.
 
         console.log("[webhook] Checkout completed for user:", userId, "tier:", tier)
         break
@@ -184,6 +176,19 @@ export async function POST(req: Request) {
         // Find subscription by customer
         const user = await getUserByCustomerId(customerId)
         if (!user) break
+
+        // Record the failed payment so it shows in admin Payment History
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const failedPaymentIntentId = (invoice as any).payment_intent as string | null
+        await internalPost("/payments/", {
+          user_id: user.id,
+          provider: "stripe",
+          provider_payment_id: failedPaymentIntentId || invoice.id,
+          amount: invoice.amount_due,
+          currency: invoice.currency,
+          status: "failed",
+          payment_method: "card",
+        })
 
         // We could also find the sub by provider ID from invoice.subscription
         const subId = invoice.subscription as string

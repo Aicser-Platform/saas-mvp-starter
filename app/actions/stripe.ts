@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import type { User } from "@/lib/types"
+import type { User, Invoice } from "@/lib/types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
@@ -63,4 +63,46 @@ export async function createPortalSession() {
 
   const data = await res.json()
   return data.portal_url
+}
+
+export async function cancelSubscription(): Promise<void> {
+  const { token } = await getSessionAndProfile()
+
+  const res = await fetch(`${API_BASE}/stripe/cancel-subscription`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }))
+    const msg = typeof error.detail === "string" ? error.detail : "Failed to cancel subscription"
+    throw new Error(msg)
+  }
+}
+
+export async function resumeSubscription(): Promise<void> {
+  const { token } = await getSessionAndProfile()
+
+  const res = await fetch(`${API_BASE}/stripe/resume-subscription`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }))
+    const msg = typeof error.detail === "string" ? error.detail : "Failed to resume subscription"
+    throw new Error(msg)
+  }
+}
+
+export async function getInvoices(): Promise<Invoice[]> {
+  const { token } = await getSessionAndProfile()
+
+  const res = await fetch(`${API_BASE}/stripe/invoices`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  })
+
+  if (!res.ok) return []
+  return res.json()
 }

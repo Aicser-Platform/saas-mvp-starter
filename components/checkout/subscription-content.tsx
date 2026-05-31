@@ -289,7 +289,7 @@ export function SubscriptionContent({ profile }: SubscriptionContentProps) {
                   ) : (
                     <Button
                       className="w-full text-sm sm:text-base"
-                      variant={product.tier === "pro" ? "default" : "outline"}
+                      variant="default"
                       onClick={() => {
                         setSelectedTierForPayment(product.tier)
                         setPaymentMethodOpen(true)

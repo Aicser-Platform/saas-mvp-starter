@@ -243,11 +243,11 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/subscription" className="cursor-pointer gap-2.5">
-                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      <CreditCard className="h-3.5 w-3.5 text-primary" />
+                  <Link href="/dashboard/billing" className="cursor-pointer gap-2.5">
+                    <div className="h-7 w-7 rounded-md bg-muted/60 flex items-center justify-center shrink-0">
+                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
-                    <span className="text-sm">Subscription</span>
+                    <span className="text-sm">Billing</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

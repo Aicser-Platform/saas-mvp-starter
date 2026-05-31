@@ -94,6 +94,17 @@ export interface BillingAccount {
   created_at: string
 }
 
+export interface Invoice {
+  id: string
+  number: string | null
+  created: string | null        // ISO timestamp
+  amount_paid: number           // cents
+  currency: string
+  status: string | null         // paid, open, void, uncollectible, draft
+  hosted_invoice_url: string | null
+  invoice_pdf: string | null
+}
+
 export interface Plan {
   id: string
   name: string
