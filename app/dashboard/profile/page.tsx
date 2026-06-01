@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useEffect } from "react"
 import type { User } from "@/lib/types"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<User | null>(null)
@@ -75,9 +76,30 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">
-        <DashboardHeader profile={profile} />
-        <main className="flex-1 p-6 md:p-8">
-          <div className="text-center">Loading...</div>
+        <DashboardHeader profile={null} />
+        <main className="flex-1 p-6 md:p-8 space-y-8">
+          <Skeleton className="h-9 w-32" />
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-52" />
+            <Skeleton className="h-5 w-64" />
+          </div>
+          <div className="max-w-2xl rounded-xl border bg-card p-6 space-y-6">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </div>
         </main>
       </div>
     )

@@ -26,7 +26,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 interface VideoPlayerProps {
   videoUrl: string
   title: string
-  onProgress?: (progress: number) => void
+  initialTime?: number
+  onProgress?: (currentTime: number, duration: number) => void
+  onPause?: () => void
 }
 
 // ── YouTube helpers ──────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title: string }) {
 
 // ── Native Video Player ───────────────────────────────────────────────────────
 
-export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
+export function VideoPlayer({ videoUrl, title, initialTime, onProgress, onPause }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
@@ -218,14 +220,15 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
       setDuration(video.duration)
       setIsLoading(false)
       setHasError(false)
+      if (initialTime && initialTime > 0) {
+        video.currentTime = initialTime
+      }
     }
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime)
-
       if (onProgress && video.duration > 0) {
-        const progressPercent = (video.currentTime / video.duration) * 100
-        onProgress(progressPercent)
+        onProgress(video.currentTime, video.duration)
       }
     }
 
@@ -240,8 +243,14 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
     const handleWaiting = () => setIsLoading(true)
     const handleCanPlay = () => setIsLoading(false)
     const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleEnded = () => setIsPlaying(false)
+    const handlePause = () => {
+      setIsPlaying(false)
+      onPause?.()
+    }
+    const handleEnded = () => {
+      setIsPlaying(false)
+      onPause?.()
+    }
 
     const handleError = () => {
       setIsLoading(false)
@@ -278,7 +287,7 @@ export function VideoPlayer({ videoUrl, title, onProgress }: VideoPlayerProps) {
       video.removeEventListener("ended", handleEnded)
       video.removeEventListener("error", handleError)
     }
-  }, [onProgress, videoUrl])
+  }, [onProgress, onPause, initialTime, videoUrl])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {

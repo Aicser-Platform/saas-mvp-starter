@@ -38,6 +38,7 @@ import {
   XCircle,
   RotateCcw,
 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { createPortalSession, getInvoices, cancelSubscription, resumeSubscription } from "@/app/actions/stripe"
 import { useSubscription } from "@/lib/hooks/use-subscription"
 
@@ -294,9 +295,19 @@ export function BillingContent({ profile }: BillingContentProps) {
         </CardHeader>
         <CardContent>
           {invoicesLoading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              Loading invoices…
+            <div className="space-y-3">
+              <div className="grid grid-cols-4 gap-4 pb-2 border-b">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+              {Array.from({ length: 4 }).map((_, row) => (
+                <div key={row} className="grid grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, col) => (
+                    <Skeleton key={col} className="h-4 w-full" />
+                  ))}
+                </div>
+              ))}
             </div>
           ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
