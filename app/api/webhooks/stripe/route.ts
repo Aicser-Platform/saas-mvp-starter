@@ -8,7 +8,7 @@ const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET ?? ""
 
 /** Call FastAPI with the internal secret (no user token needed) */
 async function internalPatch(path: string, body: Record<string, unknown>) {
-  return fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -16,10 +16,15 @@ async function internalPatch(path: string, body: Record<string, unknown>) {
     },
     body: JSON.stringify(body),
   })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    console.error(`[webhook] internalPatch ${path} failed ${res.status}:`, text)
+  }
+  return res
 }
 
 async function internalPost(path: string, body: Record<string, unknown>) {
-  return fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -27,6 +32,11 @@ async function internalPost(path: string, body: Record<string, unknown>) {
     },
     body: JSON.stringify(body),
   })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    console.error(`[webhook] internalPost ${path} failed ${res.status}:`, text)
+  }
+  return res
 }
 
 /** Find a plan by name (tier) */
@@ -135,13 +145,25 @@ export async function POST(req: Request) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription
         const providerSubId = subscription.id
+        const customerId = subscription.customer as string
 
-        await internalPatch(`/subscriptions/by-provider-id/${providerSubId}`, {
+        const patchRes = await internalPatch(`/subscriptions/by-provider-id/${providerSubId}`, {
           status: "canceled",
           canceled_at: new Date().toISOString(),
         })
 
-        console.log("[webhook] Subscription canceled:", providerSubId)
+        // Fallback: if no row matched the provider ID, cancel by user lookup
+        if (patchRes.status === 404 && customerId) {
+          const user = await getUserByCustomerId(customerId)
+          if (user) {
+            await internalPost(`/subscriptions/cancel-active`, {
+              user_id: user.id,
+            })
+            console.log("[webhook] Subscription canceled via user fallback for:", user.id)
+          }
+        }
+
+        console.log("[webhook] Subscription deleted:", providerSubId)
         break
       }
 

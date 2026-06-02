@@ -33,7 +33,9 @@ export async function createCategory(data: { name: string; description?: string 
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail ?? "Failed to create category")
+    const detail = err.detail
+    const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d: { msg: string }) => d.msg).join(", ") : `Failed to create category (${res.status})`
+    throw new Error(msg)
   }
   revalidatePath("/admin/categories")
   return res.json()

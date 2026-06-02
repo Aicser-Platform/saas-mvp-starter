@@ -18,7 +18,7 @@ import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface DashboardHeaderProps {
@@ -31,23 +31,30 @@ const tierConfig: Record<string, { variant: "free" | "pro" | "premium"; icon: Re
   premium: { variant: "premium", icon: <Crown className="h-3 w-3" />, label: "Premium" },
 }
 
-export function DashboardHeader({ profile }: DashboardHeaderProps) {
+// Isolated to satisfy Next.js requirement: useSearchParams must be inside Suspense
+function SearchBar({
+  searchValue,
+  setSearchValue,
+  mobileSearchOpen,
+  setMobileSearchOpen,
+  searchRef,
+}: {
+  searchValue: string
+  setSearchValue: (v: string) => void
+  mobileSearchOpen: boolean
+  setMobileSearchOpen: (v: boolean) => void
+  searchRef: React.RefObject<HTMLInputElement | null>
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const supabase = createClient()
-
-  const [searchValue, setSearchValue] = useState(searchParams.get("q") || "")
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sync search value when URL changes (e.g. navigating between pages)
+  // Sync when URL changes (e.g. browser back/forward)
   useEffect(() => {
     setSearchValue(searchParams.get("q") || "")
-  }, [searchParams])
+  }, [searchParams, setSearchValue])
 
-  // Debounced live search — updates URL 300ms after the user stops typing
   const handleSearchChange = (value: string) => {
     setSearchValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -73,6 +80,85 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
     router.replace("/explore", { scroll: false })
     searchRef.current?.focus()
   }
+
+  return (
+    <>
+      <form onSubmit={handleSearchSubmit} className="relative mx-3 flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" />
+        <Input
+          ref={searchRef}
+          type="text"
+          value={searchValue}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Search courses…"
+          className="pl-9 pr-8 h-9 rounded-full bg-muted/40 border-primary/20 focus:border-primary/50 focus:bg-background"
+        />
+        <AnimatePresence>
+          {searchValue && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.15 }}
+              type="button"
+              onClick={clearSearch}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </form>
+
+      {/* Mobile search overlay */}
+      <AnimatePresence>
+        {mobileSearchOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden overflow-hidden border-b border-border/50 bg-background/95 backdrop-blur-sm absolute top-full left-0 right-0 z-50"
+          >
+            <div className="px-4 py-3">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="text"
+                  value={searchValue}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search courses…"
+                  className="pl-9 pr-20 h-10 rounded-xl"
+                  autoFocus
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {searchValue && (
+                    <button type="button" onClick={clearSearch} className="p-1 rounded-md hover:bg-muted">
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setMobileSearchOpen(false)}
+                    className="text-xs font-medium text-muted-foreground px-2 py-1 rounded-md hover:bg-muted">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+export function DashboardHeader({ profile }: DashboardHeaderProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const supabase = createClient()
+
+  const [searchValue, setSearchValue] = useState("")
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -140,32 +226,20 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
               })}
             </nav>
 
-            <form onSubmit={handleSearchSubmit} className="relative mx-3 flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" />
-              <Input
-                ref={searchRef}
-                type="text"
-                value={searchValue}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search courses…"
-                className="pl-9 pr-8 h-9 rounded-full bg-muted/40 border-primary/20 focus:border-primary/50 focus:bg-background"
+            <Suspense fallback={
+              <div className="relative mx-3 flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" />
+                <Input placeholder="Search courses…" className="pl-9 h-9 rounded-full bg-muted/40 border-primary/20" disabled />
+              </div>
+            }>
+              <SearchBar
+                searchValue={searchValue}
+                setSearchValue={setSearchValue}
+                mobileSearchOpen={mobileSearchOpen}
+                setMobileSearchOpen={setMobileSearchOpen}
+                searchRef={searchRef}
               />
-              <AnimatePresence>
-                {searchValue && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted"
-                  >
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-            </form>
+            </Suspense>
 
             <nav className="flex items-center gap-0.5">
               {navLinks.slice(1).map(({ href, label }) => {
@@ -263,43 +337,6 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
         </div>
       </div>
 
-      {/* Mobile Search */}
-      <AnimatePresence>
-        {mobileSearchOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden overflow-hidden border-b border-border/50 bg-background/95 backdrop-blur-sm"
-          >
-            <div className="px-4 py-3">
-              <form onSubmit={handleSearchSubmit} className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="text"
-                  value={searchValue}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search courses…"
-                  className="pl-9 pr-20 h-10 rounded-xl"
-                  autoFocus
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  {searchValue && (
-                    <button type="button" onClick={clearSearch} className="p-1 rounded-md hover:bg-muted">
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setMobileSearchOpen(false)}
-                    className="text-xs font-medium text-muted-foreground px-2 py-1 rounded-md hover:bg-muted">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   )
 }

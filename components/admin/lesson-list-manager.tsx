@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -166,6 +166,11 @@ export function LessonListManager({ courseId, lessons: initialLessons }: LessonL
   const [lessons, setLessons] = useState<Lesson[]>(() =>
     [...initialLessons].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
   )
+
+  // Sync when the server component re-fetches after create/delete (router.refresh())
+  useEffect(() => {
+    setLessons([...initialLessons].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)))
+  }, [initialLessons])
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)

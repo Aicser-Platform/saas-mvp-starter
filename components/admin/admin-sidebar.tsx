@@ -18,7 +18,6 @@ import { createClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { motion } from "framer-motion"
 
 interface AdminSidebarProps {
   profile: UserProfile | null
@@ -32,28 +31,30 @@ const navLinks = [
   { href: "/admin/payments",    label: "Payments",   icon: DollarSign    },
 ]
 
-export function AdminSidebar({ profile }: AdminSidebarProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const supabase = createClient()
-  const [open, setOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
+interface SidebarContentProps {
+  profile: UserProfile | null
+  collapsed: boolean
+  pathname: string
+  userInitials: string
+  onSignOut: () => void
+  onNavClick: () => void
+  onToggleCollapse: () => void
+}
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-    router.refresh()
-  }
-
-  const userInitials = profile?.full_name
-    ? profile.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "A"
-
-  const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+function SidebarContent({
+  profile,
+  collapsed,
+  pathname,
+  userInitials,
+  onSignOut,
+  onNavClick,
+  onToggleCollapse,
+}: SidebarContentProps) {
+  return (
     <div className="flex flex-col h-full bg-card border-r border-border/50 relative">
       {/* Logo + collapse toggle */}
       <div className="px-3 py-4 flex items-center">
-        <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 group focus:outline-none flex-1 min-w-0">
+        <Link href="/admin" onClick={onNavClick} className="flex items-center gap-2.5 group focus:outline-none flex-1 min-w-0">
           <div className="relative shrink-0">
             <div className="absolute inset-0 rounded-xl bg-primary/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 scale-125" />
             <Image
@@ -72,9 +73,8 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
             </div>
           )}
         </Link>
-        {/* Desktop-only collapse toggle */}
         <button
-          onClick={() => setIsCollapsed(!collapsed)}
+          onClick={onToggleCollapse}
           className="hidden lg:flex shrink-0 h-7 w-7 rounded-md items-center justify-center hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
         >
           {collapsed
@@ -88,14 +88,14 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
       {!collapsed && (
         <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-4 mb-1">Menu</p>
       )}
-      <nav className={`flex-1 p-3 space-y-1`}>
+      <nav className="flex-1 p-3 space-y-1">
         {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || (pathname.startsWith(href) && href !== "/admin")
           return (
             <Link
               key={href}
               href={href}
-              onClick={() => setOpen(false)}
+              onClick={onNavClick}
               title={collapsed ? label : undefined}
               className={`relative flex items-center rounded-lg text-sm font-medium transition-all duration-150 ${
                 collapsed ? "justify-center p-3" : "gap-3 px-3 py-2.5"
@@ -106,11 +106,7 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
               }`}
             >
               {isActive && (
-                <motion.span
-                  layoutId="admin-nav-active"
-                  className="absolute inset-0 rounded-lg bg-primary/10"
-                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                />
+                <span className="absolute inset-0 rounded-lg bg-primary/10" />
               )}
               {isActive && !collapsed && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-primary" />
@@ -156,7 +152,7 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5 gap-2">
+              <DropdownMenuItem onClick={onSignOut} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5 gap-2">
                 <LogOut className="h-4 w-4" /> Sign Out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -166,17 +162,46 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
       </div>
     </div>
   )
+}
+
+export function AdminSidebar({ profile }: AdminSidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const supabase = createClient()
+  const [open, setOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+    router.refresh()
+  }
+
+  const userInitials = profile?.full_name
+    ? profile.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "A"
+
+  const sharedProps = {
+    profile,
+    pathname,
+    userInitials,
+    onSignOut: handleSignOut,
+    onNavClick: () => setOpen(false),
+  }
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <motion.div
-        animate={{ width: isCollapsed ? 72 : 256 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="hidden lg:block shrink-0 h-screen sticky top-0 overflow-hidden"
+      <div
+        style={{ width: isCollapsed ? 72 : 256 }}
+        className="hidden lg:block shrink-0 h-screen sticky top-0 overflow-hidden transition-[width] duration-300 ease-in-out"
       >
-        <SidebarContent collapsed={isCollapsed} />
-      </motion.div>
+        <SidebarContent
+          {...sharedProps}
+          collapsed={isCollapsed}
+          onToggleCollapse={() => setIsCollapsed((c) => !c)}
+        />
+      </div>
 
       {/* Mobile topbar + Sheet */}
       <div className="lg:hidden sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card border-b border-border/50 h-16">
@@ -200,7 +225,11 @@ export function AdminSidebar({ profile }: AdminSidebarProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-64">
-            <SidebarContent collapsed={false} />
+            <SidebarContent
+              {...sharedProps}
+              collapsed={false}
+              onToggleCollapse={() => {}}
+            />
           </SheetContent>
         </Sheet>
       </div>
