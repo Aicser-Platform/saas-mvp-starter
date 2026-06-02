@@ -1,139 +1,72 @@
 import { streamText, convertToModelMessages, type UIMessage, tool } from "ai"
+import { anthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
 
-export const maxDuration = 30
+export const maxDuration = 60
 
-// Tool for searching documents
 const searchDocumentsTool = tool({
-  description: "Search for relevant documents, resources, or information related to the course content",
+  description: "Search the web for additional information about the topic",
   inputSchema: z.object({
     query: z.string().describe("The search query"),
-    source: z.enum(["course", "google-drive", "google-search"]).describe("Where to search"),
   }),
-  execute: async ({ query, source }) => {
-    console.log(`[AI Assistant] Searching ${source} for: ${query}`)
-
-    // Handle Google Custom Search API by calling the google-search endpoint
-    if (source === "google-search") {
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-        const response = await fetch(`${baseUrl}/api/google-search`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, source: "google-search" }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || "Search request failed")
-        }
-
-        return await response.json()
-      } catch (error) {
-        console.error("Google Search error:", error)
-        return {
-          results: [
-            {
-              title: "Search Error",
-              snippet: error instanceof Error ? error.message : "Failed to perform Google search. Please check API configuration.",
-              source: "google-search",
-              url: "#",
-            },
-          ],
-          count: 0,
-        }
-      }
+  execute: async ({ query }) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      const response = await fetch(`${baseUrl}/api/google-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, source: "google-search" }),
+      })
+      if (!response.ok) throw new Error("Search failed")
+      return await response.json()
+    } catch (error) {
+      return { results: [], count: 0, error: "Web search unavailable" }
     }
-
-    // Mock implementations for other sources (to be implemented later)
-    if (source === "course") {
-      // TODO: Implement course database search
-      const mockResults = [
-        {
-          title: `${query} - Course Material`,
-          snippet: `Relevant information about ${query} from the course content...`,
-          source: source,
-          url: "#",
-        },
-        {
-          title: `Understanding ${query}`,
-          snippet: `Additional context and examples for ${query}...`,
-          source: source,
-          url: "#",
-        },
-      ]
-
-      return {
-        results: mockResults,
-        count: mockResults.length,
-      }
-    }
-
-    if (source === "google-drive") {
-      // TODO: Implement Google Drive API search
-      const mockResults = [
-        {
-          title: `${query} - Google Drive Document`,
-          snippet: `Document about ${query} from Google Drive...`,
-          source: source,
-          url: "#",
-        },
-      ]
-
-      return {
-        results: mockResults,
-        count: mockResults.length,
-      }
-    }
-
-    return {
-      results: [],
-      count: 0,
-    }
-  },
-})
-
-const getCourseInfoTool = tool({
-  description: "Get information about the current course, lessons, or resources",
-  inputSchema: z.object({
-    infoType: z.enum(["progress", "resources", "lessons", "difficulty"]),
-  }),
-  execute: async ({ infoType }) => {
-    // Simulated course info - can be enhanced with actual database queries
-    const info = {
-      progress: "You are currently at 50% completion of this course.",
-      resources: "This course includes PDFs, video tutorials, and practice exercises.",
-      lessons: "The course covers 10 main lessons with hands-on projects.",
-      difficulty: "This is an intermediate level course.",
-    }
-
-    return info[infoType]
   },
 })
 
 export async function POST(req: Request) {
-  const { messages, courseId }: { messages: UIMessage[]; courseId?: string } = await req.json()
+  const {
+    messages,
+    courseId,
+    lessonTitle,
+    lessonContent,
+    lessonTranscript,
+  }: {
+    messages: UIMessage[]
+    courseId?: string
+    lessonTitle?: string
+    lessonContent?: string
+    lessonTranscript?: string
+  } = await req.json()
 
-  const systemPrompt = `You are an AI Assistant for Aicser AI Studio, a professional learning platform. 
-Your role is to help students by:
-- Answering questions about the course content
-- Searching for relevant documents and resources
-- Providing explanations and clarifications
-- Helping students understand difficult concepts
+  const lessonContext = [
+    lessonTitle ? `Current lesson: "${lessonTitle}"` : "",
+    lessonContent ? `\nLesson notes:\n${lessonContent}` : "",
+    lessonTranscript ? `\nVideo transcript:\n${lessonTranscript}` : "",
+  ]
+    .filter(Boolean)
+    .join("")
 
-Be friendly, professional, and concise. Always cite sources when providing information from documents.
-${courseId ? `Current course ID: ${courseId}` : ""}`
+  const systemPrompt = `You are an AI Assistant for Aicser AI Studio, a professional learning platform for AI/ML education.
+Your role is to help students understand course content and answer their questions.
+
+${lessonContext
+  ? `${lessonContext}
+
+Answer questions about this lesson using the notes and transcript above as your primary source.
+If the answer is not covered in the lesson content, say so clearly and offer to search the web for more information.`
+  : "Answer questions about the course content. If you need more specific information, you can search the web."}
+
+Be concise, friendly, and educational. Use examples where helpful.`
 
   const result = streamText({
-    model: "openai/gpt-5-mini",
+    model: anthropic("claude-haiku-4-5-20251001"),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
-    tools: {
-      searchDocuments: searchDocumentsTool,
-      getCourseInfo: getCourseInfoTool,
-    },
+    tools: { searchDocuments: searchDocumentsTool },
     maxOutputTokens: 2000,
-    temperature: 0.7,
+    temperature: 0.5,
   })
 
   return result.toUIMessageStreamResponse()

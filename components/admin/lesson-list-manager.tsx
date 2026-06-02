@@ -4,7 +4,9 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit2, Trash2, Video, FileText, GripVertical, Github, ExternalLink } from "lucide-react"
+import { Plus, Edit2, Trash2, Video, FileText, GripVertical, ExternalLink, Mic, CheckCircle2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 import { LessonFormDialog } from "./lesson-form-dialog"
 import { deleteLesson, reorderLessons } from "@/app/actions/lessons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -41,13 +43,17 @@ interface LessonListManagerProps {
 function SortableLessonItem({
   lesson,
   index,
+  isTranscribing,
   onEdit,
   onDelete,
+  onTranscribe,
 }: {
   lesson: Lesson
   index: number
+  isTranscribing: boolean
   onEdit: (lesson: Lesson) => void
   onDelete: (lesson: Lesson) => void
+  onTranscribe: (lesson: Lesson) => void
 }) {
   const {
     attributes,
@@ -110,11 +116,33 @@ function SortableLessonItem({
               {resourceCount} resource{resourceCount > 1 ? "s" : ""}
             </Badge>
           )}
+          {lesson.transcript && (
+            <Badge variant="outline" className="text-xs gap-1 text-green-600 border-green-300 dark:border-green-700">
+              <CheckCircle2 className="h-3 w-3" />
+              Transcript ready
+            </Badge>
+          )}
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
+        {lesson.video_url && !lesson.video_url.includes("youtube") && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onTranscribe(lesson)}
+            disabled={isTranscribing}
+            title={lesson.transcript ? "Re-generate transcript" : "Generate transcript"}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {isTranscribing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={() => onEdit(lesson)}>
           <Edit2 className="h-4 w-4" />
         </Button>
@@ -144,6 +172,7 @@ export function LessonListManager({ courseId, lessons: initialLessons }: LessonL
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [transcribingId, setTranscribingId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -156,6 +185,34 @@ export function LessonListManager({ courseId, lessons: initialLessons }: LessonL
 
   const handleSuccess = () => {
     router.refresh()
+  }
+
+  const handleTranscribe = async (lesson: Lesson) => {
+    setTranscribingId(lesson.id)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+
+      const res = await fetch(`${apiBase}/lessons/${lesson.id}/generate-transcript`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || "Transcription failed")
+      }
+
+      const updated: Lesson = await res.json()
+      setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+      toast.success(`Transcript generated for "${lesson.title}"`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Transcription failed")
+    } finally {
+      setTranscribingId(null)
+    }
   }
 
   const handleEdit = (lesson: Lesson) => {
@@ -242,8 +299,10 @@ export function LessonListManager({ courseId, lessons: initialLessons }: LessonL
                       key={lesson.id}
                       lesson={lesson}
                       index={index}
+                      isTranscribing={transcribingId === lesson.id}
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
+                      onTranscribe={handleTranscribe}
                     />
                   ))}
                 </div>

@@ -80,7 +80,13 @@ export default async function LessonPage({
   const videoUrl = resolveFileUrl(currentLesson.video_url)
 
   return (
-    <CoursePageClient courseId={courseId} courseTitle={course.title}>
+    <CoursePageClient
+      courseId={courseId}
+      courseTitle={course.title}
+      lessonTitle={currentLesson.title}
+      lessonContent={currentLesson.content ?? undefined}
+      lessonTranscript={currentLesson.transcript ?? undefined}
+    >
       <div className="flex flex-col min-h-screen">
         <DashboardHeader profile={profile} />
         <LessonPageClient

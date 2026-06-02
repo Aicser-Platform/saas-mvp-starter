@@ -66,6 +66,7 @@ export interface Lesson {
   title: string
   content: string | null
   video_url: string | null
+  transcript: string | null
   order_index: number | null
   resources: LessonResource[] | null
   created_at: string
