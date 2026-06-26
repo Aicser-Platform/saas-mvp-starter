@@ -1,6 +1,6 @@
 /**
  * Client-side file upload utility.
- * Uploads directly to the FastAPI backend (which routes to Azure or local storage).
+ * Uploads directly to the FastAPI backend, which saves files to the local uploads/ directory.
  * This CANNOT be a server action because File objects can't cross the server boundary.
  */
 

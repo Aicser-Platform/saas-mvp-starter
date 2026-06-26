@@ -9,18 +9,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v
 export default async function AdminUsersPage() {
   const supabase = await createClient()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) redirect("/auth/login")
-
-  const profile = await getProfileData(session.user.id)
-  if (profile?.role !== "admin") redirect("/explore")
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/auth/login")
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? ""
+  const profile = await getProfileData(user.id)
 
   // Fetch all users from FastAPI
   const res = await fetch(`${API_BASE}/users/admin/all`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
+    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   })
   const users: User[] = res.ok ? await res.json() : []

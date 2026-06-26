@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { LogOut, Settings, CreditCard, Search, X, Bell, Crown, Zap } from "lucide-react"
+import { LogOut, Settings, CreditCard, Search, X, Bell, Crown, Zap, LayoutDashboard } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
@@ -268,6 +268,15 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
               <Search className="h-4 w-4 text-muted-foreground" />
             </button>
 
+            {profile?.role === "admin" && (
+              <Link href="/admin">
+                <Button size="sm" variant="outline" className="hidden sm:flex items-center gap-1.5 h-8 px-3 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground font-semibold">
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Admin
+                </Button>
+              </Link>
+            )}
+
             <Badge variant={tierInfo.variant} className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 font-semibold">
               {tierInfo.icon}
               {tierInfo.label}
@@ -308,6 +317,16 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {profile?.role === "admin" && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin" className="cursor-pointer gap-2.5">
+                      <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                        <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-primary">Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile" className="cursor-pointer gap-2.5">
                     <div className="h-7 w-7 rounded-md bg-muted/60 flex items-center justify-center shrink-0">

@@ -15,16 +15,11 @@ export default async function CourseManagePage({ params }: { params: Promise<{ i
   const { id } = await params
   const supabase = await createClient()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) redirect("/auth/login")
-
-  const profile = await getProfileData(session.user.id)
-  if (profile?.role !== "admin") redirect("/explore")
-
-  const token = session.access_token
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/auth/login")
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? ""
+  const profile = await getProfileData(user.id)
 
   // Fetch course details
   const courseRes = await fetch(`${API_BASE}/courses/${id}`, {

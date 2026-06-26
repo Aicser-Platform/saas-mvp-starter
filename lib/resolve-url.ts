@@ -1,29 +1,13 @@
-/**
- * Convert Azure Blob Storage URLs to proxy URLs.
- * 
- * Raw Azure URLs (https://xxx.blob.core.windows.net/...) don't work
- * when public access is disabled. This converts them to our backend
- * proxy endpoint (/api/v1/files/...) which generates signed URLs.
- * 
- * URLs that are already proxy paths or non-Azure URLs pass through unchanged.
- */
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+const BACKEND_BASE = API_BASE.replace(/\/api\/v1\/?$/, "")
 
+/**
+ * Resolve a relative /uploads/ path or /api/v1/files/ proxy path to an
+ * absolute URL pointing at the FastAPI backend.
+ * External URLs (http/https) and empty values pass through unchanged.
+ */
 export function resolveFileUrl(url: string | null | undefined): string {
   if (!url) return ""
-
-  // Already a proxy URL — return as-is
-  if (url.startsWith("/api/v1/files/")) return `${API_BASE.replace("/api/v1", "")}${url}`
-
-  // Raw Azure blob URL → convert to proxy
-  // Pattern: https://<account>.blob.core.windows.net/<container>/<blob_name>
-  const azureMatch = url.match(/https:\/\/[^/]+\.blob\.core\.windows\.net\/[^/]+\/(.+)/)
-  if (azureMatch) {
-    const blobName = azureMatch[1]
-    return `${API_BASE}/files/${blobName}`
-  }
-
-  // YouTube, external URLs, local /uploads/ paths — return as-is
-  return url
+  if (url.startsWith("http://") || url.startsWith("https://")) return url
+  return `${BACKEND_BASE}${url}`
 }

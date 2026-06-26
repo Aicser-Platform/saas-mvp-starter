@@ -11,18 +11,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/auth/login")
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? ""
 
-  if (!session) redirect("/auth/login")
-
-  const token = session.access_token
-
-  const isAdmin = await isUserAdmin(session.user.id)
-  if (!isAdmin) redirect("/explore")
-
-  const profile = await getProfileData(session.user.id)
+  const profile = await getProfileData(user.id)
   if (!profile) redirect("/auth/login")
 
   async function apiFetch<T>(path: string): Promise<T | null> {

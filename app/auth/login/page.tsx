@@ -13,7 +13,7 @@ import { useState } from "react"
 
 export default function LoginPage() {
   // Pre-fill with demo/test credentials
-  const [email, setEmail] = useState("oeurn.leesinh@dataticon.com")
+  const [email, setEmail] = useState("demo@dataticon.com")
   const [password, setPassword] = useState("demo123")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)

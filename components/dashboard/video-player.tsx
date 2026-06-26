@@ -36,17 +36,17 @@ interface VideoPlayerProps {
 function getYouTubeId(url: string): string | null {
   try {
     const parsed = new URL(url)
-    // youtube.com/watch?v=ID
     if (parsed.hostname.includes("youtube.com")) {
+      // /embed/ID  (must check before searchParams)
+      if (parsed.pathname.startsWith("/embed/")) {
+        return parsed.pathname.split("/embed/")[1].split("?")[0]
+      }
+      // /watch?v=ID
       return parsed.searchParams.get("v")
     }
     // youtu.be/ID
     if (parsed.hostname === "youtu.be") {
       return parsed.pathname.slice(1)
-    }
-    // youtube.com/embed/ID
-    if (parsed.hostname.includes("youtube.com") && parsed.pathname.startsWith("/embed/")) {
-      return parsed.pathname.split("/embed/")[1]
     }
   } catch {}
   return null
